@@ -1,54 +1,32 @@
-<div align="center">
-  
-  ![GitHub repo size](https://img.shields.io/github/repo-size/codewithsadee/cryptex)
-  ![GitHub stars](https://img.shields.io/github/stars/codewithsadee/cryptex?style=social)
-  ![GitHub forks](https://img.shields.io/github/forks/codewithsadee/cryptex?style=social)
-[![Twitter Follow](https://img.shields.io/twitter/follow/codewithsadee_?style=social)](https://twitter.com/intent/follow?screen_name=codewithsadee_)
-  [![YouTube Video Views](https://img.shields.io/youtube/views/ux3o7jDhvOc?style=social)](https://youtu.be/ux3o7jDhvOc)
+<p align="center">
+  <img src="https://imgur.com/VQIB0A9.png" title="Logo" width="400"/>
+</p>
+<p align="center">
+  <b>
+    Drain
+  </b>
+  <br/>
+<i>  Send all tokens from one wallet to another quickly.
+<br/>Whether getting hacked or starting fresh, Drain makes sure you get every last wei.
+</i>
+</p>
 
-  <br />
-  <br />
+<br/>
 
-  <h2 align="center">Cryptex - Cryptocurrency Website</h2>
+## [Live Deploy Link](https://drain.on.fleek.co/)
 
-  Cryptex is a fully responsive cryptocurrency website, <br />Responsive for all devices, build using HTML, CSS, and JavaScript.
+## Network Support
 
-  <a href="https://codewithsadee.github.io/cryptex/"><strong>➥ Live Demo</strong></a>
+<img src="https://i.imgur.com/QXyHETu.png" title="network support" />
 
-</div>
+## Wallet Support
 
-<br />
+<img src="https://i.imgur.com/IKfrIqW.png" title="wallet support support" />
 
-### Demo Screeshots
+## Built With
 
-![Cryptex Desktop Demo](./readme-images/desktop.png "Desktop Demo")
+Fleek, IPFS, Polygon, Next.js, etc.
 
-### Prerequisites
+## EthMexico
 
-Before you begin, ensure you have met the following requirements:
-
-* [Git](https://git-scm.com/downloads "Download Git") must be installed on your operating system.
-
-### Run Locally
-
-To run **Cryptex** locally, run this command on your git bash:
-
-Linux and macOS:
-
-```bash
-sudo git clone https://github.com/codewithsadee/cryptex.git
-```
-
-Windows:
-
-```bash
-git clone https://github.com/codewithsadee/cryptex.git
-```
-
-### Contact
-
-If you want to contact with me you can reach me at [Twitter](https://www.twitter.com/codewithsadee).
-
-### License
-
-This project is **free to use** and does not contains any license.
+To view the full project description, read [the EthMexico project page](https://ethglobal.com/showcase/drain-6f9sc)
