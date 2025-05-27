@@ -1,4 +1,4 @@
-use strict';
+'use strict';
 
 /**
  * add event on element
