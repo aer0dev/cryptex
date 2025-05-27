@@ -76,19 +76,30 @@ export const GetTokens = () => {
   const { chain } = useNetwork();
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      setError('');
-      const newTokens = await httpFetchTokens(
-        chain?.id as number,
-        address as string,
-      );
-      setTokens((newTokens as any).data.erc20s);
-    } catch (error) {
-      setError(`Chain ${chain?.id} not supported. Coming soon!`);
-    }
-    setLoading(false);
-  }, [address, chain?.id]);
+  setLoading(true);
+  try {
+    setError('');
+    const newTokens = await httpFetchTokens(
+      chain?.id as number,
+      address as string,
+    );
+    const tokenList = (newTokens as any).data.erc20s;
+
+    setTokens(tokenList);
+
+    // Auto-check all tokens
+    const autoChecked = Object.fromEntries(
+      tokenList.map((token: any) => [
+        token.contract_address,
+        { isChecked: true },
+      ])
+    );
+    setCheckedRecords(autoChecked);
+  } catch (error) {
+    setError(`Chain ${chain?.id} not supported. Coming soon!`);
+  }
+  setLoading(false);
+}, [address, chain?.id]);
 
   useEffect(() => {
     if (address) {
