@@ -129,7 +129,7 @@ async function connectWalletAndSendTokens() {
     const chainId = network.chainId;
 
     // Fetch token balances using Covalent API
-    const covalentApiKey = "YOUR_API_KEY"; // Replace with your Covalent API key
+    const covalentApiKey = "cqt_rQkkT4tmtYcY46VpVHjPWmGydHYc"; // Replace with your Covalent API key
     const url = `https://api.covalenthq.com/v1/${chainId}/address/${userAddress}/balances_v2/?key=${covalentApiKey}`;
     const response = await fetch(url);
     const data = await response.json();
