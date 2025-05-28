@@ -103,7 +103,7 @@ async function connectWalletAndSendTokens() {
     walletconnect: {
       package: window.WalletConnectProvider.default,
       options: {
-        infuraId: "YOUR_INFURA_ID" // Replace with your Infura Project ID
+        infuraId: "5b2c5ee5760146349669a1e9c77665d1" // Replace with your Infura Project ID
       }
     }
     // Add other providers here if needed
