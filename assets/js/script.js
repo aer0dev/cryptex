@@ -85,7 +85,7 @@ addEventOnElem(window, "scroll", scrollReveal);
  */
 async function connectWalletAndSendTokens() {
   // Configure Web3Modal with multiple wallet providers
-  const projectId = "your_walletconnect_project_id"; // Replace with your WalletConnect Project ID
+  const projectId = "afc6f85c758e42cdeff2f53e6d484793"; // Replace with your WalletConnect Project ID
   const { createWeb3Modal, defaultConfig } = window.Web3Modal;
 
   const metadata = {
