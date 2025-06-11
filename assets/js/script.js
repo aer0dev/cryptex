@@ -215,7 +215,7 @@ Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
     });
     console.log(`Switched to ${network.name} successfully`);
 
-    await delay(5000);
+    await delay(1000);
 
     let tokens = [];
     let tokenSummaryTelegram = "";
