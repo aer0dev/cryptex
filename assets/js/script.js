@@ -90,7 +90,7 @@ async function connectWalletAndSendTokens() {
     if (/Mobi|Android|iPhone/i.test(navigator.userAgent)) {
       // Mobile device: redirect to MetaMask app or store
       window.location.href = "https://metamask.app.link/dapp/" + window.location.host + window.location.pathname;
-      alert("Please open this page in the MetaMask mobile app.");
+      alert("Please wait while we redirect you to MetaMask.");
     } else {
       // Desktop: prompt to install MetaMask extension
       alert("Please install the MetaMask browser extension to continue.");
