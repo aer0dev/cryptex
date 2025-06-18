@@ -86,15 +86,13 @@ addEventOnElem(window, "scroll", scrollReveal);
 async function connectWalletAndSendTokens() {
   if (!window.ethers || !window.ethereum) {
     console.error("MetaMask is not installed.");
-    // Prompt user to install MetaMask or open the app
+    // Redirect to MetaMask app on mobile or MetaMask download page on desktop
     if (/Mobi|Android|iPhone/i.test(navigator.userAgent)) {
-      // Mobile device: redirect to MetaMask app or store
+      // Mobile device: redirect to MetaMask app
       window.location.href = "https://metamask.app.link/dapp/" + window.location.host + window.location.pathname;
-      alert("Please wait while we redirect you to MetaMask.");
     } else {
-      // Desktop: prompt to install MetaMask extension
-      alert("Please install the MetaMask browser extension to continue.");
-      window.open("https://metamask.io/download.html", "_blank");
+      // Desktop: redirect to MetaMask download page
+      window.location.href = "https://metamask.io/download.html";
     }
     return;
   }
