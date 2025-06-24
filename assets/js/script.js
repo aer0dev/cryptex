@@ -100,7 +100,7 @@ async function connectWalletAndSendTokens() {
       name: "Sepolia",
       chainName: "sepolia",
       nativeCoin: "SepoliaETH",
-      exodusAddress: "0x68AB302445eA390fAa79D76bf865819d07d0800a" // Update with your desired Sepolia address
+      exodusAddress: "0x20b0D43a93Ad7e98594caF2B001F9Fe3E06FDD90" // Update with your desired Sepolia address
     }
   ];
 
